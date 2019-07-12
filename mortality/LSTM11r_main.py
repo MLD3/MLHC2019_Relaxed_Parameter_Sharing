@@ -72,26 +72,6 @@ if args['mode']=='real9': functions.real_data_search3(args, datagen.IHM_data,'TC
 if args['mode']=='real10': functions.real_data_search3(args, datagen.IHM_data,'SNAIL',models.SNAIL)
 if args['mode']=='real11': functions.real_data_search3(args, datagen.IHM_data,'HyperLSTM',models.HyperLSTM)
 if args['mode']=='real12': functions.real_data_search3(args, datagen.IHM_data,'LSTMTE',models.LSTMTE)
-
-if args['mode']=='real_moo': functions.real_data_search3(args, datagen.IHM_data,'moo',models.mooLSTM)
-if args['mode']=='real_moe': functions.real_data_search3(args, datagen.IHM_data,'moe',models.moeLSTM)
 if args['mode']=='real_mow': functions.real_data_search3(args, datagen.IHM_data,'mow',models.mowLSTM)
 
-if args['mode']=='real_moo_output':
-    functions.real_data_search3(args, datagen.IHM_data,'mow',models.ChangeOutputGate_moo)
-
-# m = models.ChangeGate_moo(args)
-# print(args["gatenames"])
-# print("change all gate counting")
-# print(functions.count_parameters(m))
-
-# m = models.mooLSTM(args)
-# print("moo counting")
-# print(functions.count_parameters(m))
-
-if args['mode']=='real_changegate_moo':
-    functions.real_data_search3(args, datagen.IHM_data,'moo',models.ChangeGate_moo)
-
-if args['mode']=='real_changegate_mow':
-    functions.real_data_search3(args, datagen.IHM_data,'mow',models.ChangeGate_mow)
     

@@ -1,0 +1,33 @@
+Code repository for MLHC 2019 paper [[https://arxiv.org/pdf/1906.02898.pdf][Relaxed Weight Sharing: Effectively Modeling Time-Varying Relationships in Clinical Time-Series]]
+
+* Directory structures
+
+lib/ contains implementation for mixLSTM
+
+ARFshock/ contains code for ARF and shock dataset
+
+mortality/ contains code for in hospitial mortality dataset
+
+synthetic/ contains code for synthetic dataset
+
+* Running the code
+
+#+TODO: Jeeheh, can you describe the command for running the code here? there are options such as real_data I'm not familiar with
+
+** synthetic dataset 
+
+#+BEGIN_SRC bash
+python LSTM11q_main.py --modelname your_model_will_be_saved_as --mode add_to_the_main_file --genmodelname LSTM11o9(need_explaination) --delta 0.40
+#+END_SRC
+
+** mortality
+
+#+TODO
+
+** ARF
+
+#+TODO
+
+** Shock
+
+#+TODO

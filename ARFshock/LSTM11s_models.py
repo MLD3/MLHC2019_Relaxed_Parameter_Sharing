@@ -12,18 +12,22 @@ from torch.autograd import Variable
 import torch.utils.data as data
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
+from lib.model import ExampleMowLSTM
 
 class mowLSTM(nn.Module):
 
     def __init__(self, args, setKT=True):
-        from MTL_RNN.lib.model import RNN_LSTM_MoW        
-        #super(self.__class__, self).__init__()
         nn.Module.__init__(self)
         self.args  = args
-        self.model = RNN_LSTM_MoW(args['d'], args['hidden_size'],
+        self.model = ExampleMowLSTM(args['d'], args['hidden_size'],
                                   args['num_classes'], num_layers=1,
                                   num_directions=1, dropout=0,
-                                  activation=nn.LogSoftmax(dim=1)).cuda()
+                                  activation=nn.LogSoftmax(dim=-1))
+        self.num_layers = 1
+        self.num_directions = 1
+        self.hidden_size = args['hidden_size']
+        self.batch_size = args['batch_size']
+
         if setKT:
             self.model.setKT(args['share_num'], args['T'])
         
@@ -33,217 +37,24 @@ class mowLSTM(nn.Module):
         input_lengths = [self.args['T']] * x.size(1)
 
         # set initial hidden and cell states
-        states = self.model.initHidden(self.args['batch_size'])
+        h, c = (torch.zeros(self.num_layers * self.num_directions,
+                            self.batch_size, self.hidden_size),
+                torch.zeros(self.num_layers * self.num_directions,
+                            self.batch_size, self.hidden_size))
+        cuda_check = next(self.parameters())
+        if cuda_check.is_cuda:
+        # if torch.cuda.is_available():
+            h = h.cuda()
+            c = c.cuda()
+        
+        states = (h, c)
         outputs, states = self.model(x, states, input_lengths)
         
         return outputs.permute(1, 0, 2)
 
     def after_backward(self):
-        self.model.after_backward()
-
-class mooLSTM(nn.Module):
-
-    def __init__(self, args, setKT=True):
-        from MTL_RNN.lib.model import RNN_LSTM_MoO_time        
-        #super(self.__class__, self).__init__()
-        nn.Module.__init__(self)        
-        self.args  = args
-        self.model = RNN_LSTM_MoO_time(args['d'], args['hidden_size'],
-                                       args['num_classes'], num_layers=1,
-                                       num_directions=1, dropout=0,
-                                       activation=nn.LogSoftmax(dim=1)).cuda()
-        if setKT:
-            self.model.setKT(args['share_num'], args['T'])
+        return 
         
-    def forward(self, x):
-        # change x from (bs, seq_len, d) => (seq_len, bs, d)
-        x = x.permute(1, 0, 2)
-        input_lengths = [self.args['T']] * x.size(1)
-
-        # set initial hidden and cell states
-        states = self.model.initHidden(self.args['batch_size'])
-        outputs, states = self.model(x, states, input_lengths)
-        
-        return outputs.permute(1, 0, 2)
-
-    def after_backward(self):
-        self.model.after_backward()
-
-class moeLSTM(nn.Module):
-
-    def __init__(self, args, setKT=True):
-        from MTL_RNN.lib.model import RNN_LSTM_MoO        
-        #super(self.__class__, self).__init__()
-        nn.Module.__init__(self)        
-        self.args  = args
-        self.model = RNN_LSTM_MoO(args['d'], args['hidden_size'],
-                                  args['num_classes'], num_layers=1,
-                                  num_directions=1, dropout=0,
-                                  activation=nn.LogSoftmax(dim=1)).cuda()
-        if setKT:
-            self.model.setKT(args['share_num'], args['T'])
-        
-    def forward(self, x):
-        # change x from (bs, seq_len, d) => (seq_len, bs, d)
-        x = x.permute(1, 0, 2)
-        input_lengths = [self.args['T']] * x.size(1)
-
-        # set initial hidden and cell states
-        states = self.model.initHidden(self.args['batch_size'])
-        outputs, states = self.model(x, states, input_lengths)
-        
-        return outputs.permute(1, 0, 2)
-
-    def after_backward(self):
-        self.model.after_backward()
-        
-###### new start ########################################################
-class LSTM_jiaxuan(nn.Module):
-
-    def __init__(self, args, activation=None):        
-        """Initialize params."""
-        super(self.__class__, self).__init__()
-        if activation:
-            self.activation = activation
-        else:
-            self.activation = lambda x: x
-        
-        self.args=args
-        self.fc = nn.Linear(args['hidden_size'], args['num_classes'])
-
-        # weights
-        self.input_weights_input = nn.ModuleList()
-        self.hidden_weights_input = nn.ModuleList()
-        
-        self.input_weights_output = nn.ModuleList()
-        self.hidden_weights_output = nn.ModuleList()
-
-        self.input_weights_forget = nn.ModuleList()
-        self.hidden_weights_forget = nn.ModuleList()
-
-        self.input_weights_cell = nn.ModuleList()
-        self.hidden_weights_cell = nn.ModuleList()
-        
-        gamma_start = 1.0
-        self.lna_gamma = Variable((torch.ones(4*args['hidden_size'])*gamma_start).cuda())
-        self.lna_beta = Variable((torch.zeros(4*args['hidden_size'])).cuda())
-        self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
-        self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
-
-    def forward(self, input, hidden, i_, f_, c_, o_):
-        """Propogate input through the network."""
-        # i_, f_, c_, o_ are indices for input, forget, cell, and output gate respectively
-        # tag = None  #
-        def recurrence(input, hidden):
-            """Recurrence helper."""
-            hx, cx = hidden  # n_b x hidden_dim
-            # get the gates:
-            gates = torch.cat([
-                self.input_weights_input[i_](input) + self.hidden_weights_input[i_](hx),
-                self.input_weights_forget[f_](input) + self.hidden_weights_forget[f_](hx),
-                self.input_weights_cell[c_](input) + self.hidden_weights_cell[c_](hx),
-                self.input_weights_output[o_](input) + self.hidden_weights_output[o_](hx),               
-            ], 2)
-            gates = layer_norm_all(gates, self.args['batch_size'], 4, self.args['hidden_size'], gamma=self.lna_gamma, beta=self.lna_beta)
-            ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
-
-            ingate = torch.sigmoid(ingate)
-            forgetgate = torch.sigmoid(forgetgate)
-            cellgate = torch.tanh(cellgate)  # o_t
-            outgate = torch.sigmoid(outgate)
-            
-            cy = (forgetgate * cx) + (ingate * cellgate)
-            
-            hy = outgate * torch.tanh(layer_norm(cy, self.args['hidden_size'], gamma=self.ln_gamma, beta=self.ln_beta))            
-            return hy, cy
-        
-        # input is seq_len first 
-        output = []
-        steps = range(input.size(0))
-
-        for i in steps:
-            hidden = recurrence(input[i], hidden)
-            if isinstance(hidden, tuple):
-                output.append(hidden[0])
-            else:
-                output.append(hidden)
-
-        output = torch.cat(output, 0) # (seq_len, bs, d)
-        seq_len, bs, d  = output.shape
-
-        yhat = self.activation(self.fc(output.view(-1, d)))
-        return yhat.view(seq_len, bs, self.args['num_classes']), hidden
-        
-class BaseModelGateSpecific(nn.Module):
-
-    def __init__(self, base_model, gate_names, args):
-        super(self.__class__, self).__init__()        
-        gate_names = set(gate_names)
-        self.i, self.f, self.c, self.o = 0, 0, 0, 0
-        for gate_name in gate_names:
-            assert gate_name in ['input', 'forget', 'cell', 'output'], "not supported"
-
-        self.model = base_model
-            
-        for gate_name in ['input', 'forget', 'cell', 'output']:
-            # append to the list of gate weights
-            if gate_name == 'input' and (len(self.model.input_weights_input) == 0 or gate_name in gate_names):
-                self.model.input_weights_input.append(nn.Linear(args['d'], args['hidden_size']))
-                self.model.hidden_weights_input.append(nn.Linear(args['hidden_size'], args['hidden_size']))
-                self.model.input_weights_input[-1].weight.data.uniform_()
-                self.model.hidden_weights_input[-1].weight.data = nn.init.orthogonal_(torch.empty(self.model.hidden_weights_input[-1].weight.data.shape)).cuda()
-                self.i = len(self.model.input_weights_input) - 1
-            elif gate_name == 'output' and (len(self.model.input_weights_output) == 0 or gate_name in gate_names):
-                self.model.input_weights_output.append(nn.Linear(args['d'], args['hidden_size']))
-                self.model.hidden_weights_output.append(nn.Linear(args['hidden_size'], args['hidden_size']))
-                self.model.input_weights_output[-1].weight.data.uniform_()
-                self.model.hidden_weights_output[-1].weight.data = nn.init.orthogonal_(torch.empty(self.model.hidden_weights_output[-1].weight.data.shape)).cuda()
-                self.o = len(self.model.input_weights_output) - 1             
-            elif gate_name == 'forget' and (len(self.model.input_weights_forget) == 0 or gate_name in gate_names):
-                self.model.input_weights_forget.append(nn.Linear(args['d'], args['hidden_size']))
-                self.model.hidden_weights_forget.append(nn.Linear(args['hidden_size'], args['hidden_size']))
-                self.model.input_weights_forget[-1].weight.data.uniform_()
-                self.model.hidden_weights_forget[-1].weight.data = nn.init.orthogonal_(torch.empty(self.model.hidden_weights_forget[-1].weight.data.shape)).cuda()
-                self.f = len(self.model.input_weights_forget) - 1            
-            elif gate_name == 'cell' and (len(self.model.input_weights_cell) == 0 or gate_name in gate_names):
-                self.model.input_weights_cell.append(nn.Linear(args['d'], args['hidden_size']))
-                self.model.hidden_weights_cell.append(nn.Linear(args['hidden_size'], args['hidden_size']))
-                self.model.input_weights_cell[-1].weight.data.uniform_()
-                self.model.hidden_weights_cell[-1].weight.data = nn.init.orthogonal_(torch.empty(self.model.hidden_weights_cell[-1].weight.data.shape)).cuda()
-                self.c = len(self.model.input_weights_cell) - 1
-                
-    def forward(self, x, hidden):
-        # x.shape: (seq_len, bs, _)
-        o, hidden = self.model(x, hidden, self.i, self.f, self.c, self.o)
-        return o, hidden
-    
-class ChangeGate_moo(mooLSTM):
-
-    def __init__(self, args):
-        mooLSTM.__init__(self, args, setKT=False)                
-        # create a shared base model here: mimic LSTM but is seqlen first and returns
-        # both o and (h, c)
-        self.shared_model = LSTM_jiaxuan(args, activation=nn.LogSoftmax(dim=1))
-        # and then change the gate specific to the output
-        self.model.base_model = lambda: BaseModelGateSpecific(self.shared_model, args["gatenames"], args)
-        self.model.setKT(args['share_num'], args['T'])
-        # print("{} input, {} output".format(len(self.shared_model.input_weights_input),
-        #                                    len(self.shared_model.input_weights_output)))
-
-class ChangeGate_mow(mowLSTM):
-
-    def __init__(self, args):
-        mowLSTM.__init__(self, args, setKT=False)                
-        # create a shared base model here: mimic LSTM but is seqlen first and returns
-        # both o and (h, c)
-        self.shared_model = LSTM_jiaxuan(args, activation=nn.LogSoftmax(dim=1))
-        # and then change the gate specific to the output
-        self.model.base_model = lambda: BaseModelGateSpecific(self.shared_model, args["gatenames"], args)
-        self.model.setKT(args['share_num'], args['T'])
-        
-        
-################################## new ends here ############################
-
 class pytorchLSTM(nn.Module):
 
     def __init__(self, args):

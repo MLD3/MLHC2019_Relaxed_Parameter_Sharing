@@ -106,38 +106,10 @@ if args['mode']=='mow':
     functions.synth_data_search(args, datagen.synth_data2,
                                 [('mowLSTM',models.mowLSTM)])
 
-if args['mode']=='moo':
-    if args['synthstart']:
-        datagen.synth_evaluate2(args)
-        
-    functions.synth_data_search(args, datagen.synth_data2,
-                                [('mooLSTM',models.mooLSTM)])
-
-if args['mode']=='moe':
-    if args['synthstart']:
-        datagen.synth_evaluate2(args)
-        
-    functions.synth_data_search(args, datagen.synth_data2,
-                                [('moe',models.moeLSTM)])
-    
-    
-if args['mode']=='changegate_mow':
-    if args['synthstart']:
-        datagen.synth_evaluate2(args)
-        
-    functions.synth_data_search(args, datagen.synth_data2,
-                                [('changegate_mow',models.ChangeGate_mow)])
-
-if args['mode']=='changegate_moo':
-    if args['synthstart']:
-        datagen.synth_evaluate2(args)
-        
-    functions.synth_data_search(args, datagen.synth_data2,
-                                [('changegate_moo',models.ChangeGate_moo)])
 if args['mode']=='lstm':
     if args['synthstart']:
         datagen.synth_evaluate2(args)
         
     functions.synth_data_search(args, datagen.synth_data2,
-                                [('LSTM',models.pytorchLSTM_jiaxuan)])
+                                [('LSTM',models.pytorchLSTM)])
 

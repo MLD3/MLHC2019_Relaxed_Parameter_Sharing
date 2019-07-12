@@ -81,23 +81,8 @@ if args['mode']=='Shock4': functions.real_data_search3(args, datagen.real_data,'
 if args['mode']=='Shock5': functions.real_data_search3(args, datagen.real_data,'nidLSTM 6',models.nidLSTM)
 if args['mode']=='Shock6': functions.real_data_search3(args, datagen.real_data,'nidLSTM 16',models.nidLSTM)
     
-if args['mode']=='Shock_moo': functions.real_data_search3(args, datagen.real_data,'moo',models.mooLSTM)
-if args['mode']=='Shock_moe': functions.real_data_search3(args, datagen.real_data,'moe',models.moeLSTM)
 if args['mode']=='Shock_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mowLSTM)
-
-if args['mode']=='ARF_moo': functions.real_data_search3(args, datagen.real_data,'moo',models.mooLSTM)
-if args['mode']=='ARF_moe': functions.real_data_search3(args, datagen.real_data,'moe',models.moeLSTM)
 if args['mode']=='ARF_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mowLSTM)
-
-if args['mode']=='Shock_changegate_moo':
-    functions.real_data_search3(args, datagen.real_data,'moo',models.ChangeGate_moo)
-if args['mode']=='Shock_changegate_mow':
-    functions.real_data_search3(args, datagen.real_data,'mow',models.ChangeGate_mow)
-
-if args['mode']=='ARF_changegate_moo':
-    functions.real_data_search3(args, datagen.real_data,'moo',models.ChangeGate_moo)
-if args['mode']=='ARF_changegate_mow':
-    functions.real_data_search3(args, datagen.real_data,'mow',models.ChangeGate_mow)
 
 if args['mode']=='ARF12hr': 
     args['T']=12
