@@ -12,7 +12,8 @@ synthetic/ contains code for synthetic dataset
 
 * Running the code
 
-#+TODO: Jeeheh, can you describe the command for running the code here? there are options such as real_data I'm not familiar with
+TODO: Jeeheh, could you describe the command for running the code here? there are options such as real_data I'm not familiar with
+TODO: Also, please remove any absolute path in the file and any comment with joh or jeeheh in it
 
 ** synthetic dataset 
 

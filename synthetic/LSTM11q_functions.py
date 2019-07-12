@@ -15,7 +15,7 @@ from sklearn import metrics
 import time
 import os
 
-jiaxuan_save = os.environ['jiaxuan_save'] + "synthetic/save/"
+savename_ = 'save/' 
 jeeheh_save = os.environ['jeeheh_save']
 
 def train(train_loader, model, args, optimizer, verbose=False):
@@ -71,9 +71,9 @@ def test(test_loader, model, args, save_scores=False):
         
     if save_scores: 
         args['len dataset'] = len(test_loader.dataset)
-        save_name_ = jiaxuan_save+args['modelname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
-        np.savez(save_name_ + '_testscores', pred=pred, y_true=y_true,args=args)
-        torch.save(model.state_dict(),  save_name_ + ".ckpt")
+        filename = savename_+args['modelname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
+        np.savez(filename + '_testscores', pred=pred, y_true=y_true,args=args)
+        torch.save(model.state_dict(),  filename + ".ckpt")
     
     test_loss /= len(test_loader.dataset)*(args['T']-args['k'])
     test_loss_t /= len(test_loader.dataset)
@@ -89,7 +89,6 @@ def HP_search(args, Net, train_loader, val_loader,test_loader):
     for run in range(args['budget']):
         
         #Draw HP
-        args['num_layers']=int(np.random.choice([1,2])) # for pytorchLSTM_jiaxuan only
         args['hidden_size']=int(np.random.choice([100,150,300,500,700,900,1100]))
         args['hyp_hidden_size']=int(np.random.choice([25,50,75,100,125,150]))
         args['ratio']=np.random.choice([.1,.25,.5,.75,.9])
@@ -178,7 +177,7 @@ def truerandom2(data_loader, args):
         test_loss /= len(data_loader.dataset)*(args['T']-args['k'])
         
     if args['verbose']==True:
-        np.savez(jiaxuan_save+args['modelname']+'_random', output=output,target=target)
+        np.savez(savename_+args['modelname']+'_random', output=output,target=target)
         
     return test_loss
 
@@ -226,9 +225,9 @@ def synth_data_search(args, synth_data, model_list):
             zdf['delta'] = [args['delta']]*zdf.shape[0]
             zdf['synthnum'] = [synth_num]*zdf.shape[0]
             df = df.append(zdf, sort=True)
-            df.to_pickle(jiaxuan_save+args['modelname']+'_data_search.pickle')
+            df.to_pickle(savename_+args['modelname']+'_data_search.pickle')
         
-        df.to_pickle(jiaxuan_save+args['modelname']+'_data_search.pickle')
+        df.to_pickle(savename_+args['modelname']+'_data_search.pickle')
     return df
 
 

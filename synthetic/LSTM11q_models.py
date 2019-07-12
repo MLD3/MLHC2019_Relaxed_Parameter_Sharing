@@ -22,8 +22,9 @@ class pytorchLSTM(nn.Module):
         self.args=args
         self.lstm=nn.LSTM(input_size=args['d'],
                           hidden_size=args['hidden_size'], batch_first=True)
-        self.fc = nn.Linear(args['hidden_size'], args['num_classes'])
-    
+        self.fc = nn.Linear(args['hidden_size'], args['output_size'])
+        self.init_hidden()
+        
     def init_hidden(self):
         self.h0 = torch.zeros(1, self.args['batch_size'],
                               self.args['hidden_size']).cuda()
@@ -35,7 +36,7 @@ class pytorchLSTM(nn.Module):
         output = F.relu(self.fc(output))
         return output
 
-class mowLSTM(nn.Module):
+class mixLSTM(nn.Module):
 
     def __init__(self, args, setKT=True):
         nn.Module.__init__(self)

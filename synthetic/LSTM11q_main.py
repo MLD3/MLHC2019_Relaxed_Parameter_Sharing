@@ -104,7 +104,7 @@ if args['mode']=='mow':
         datagen.synth_evaluate2(args)
         
     functions.synth_data_search(args, datagen.synth_data2,
-                                [('mowLSTM',models.mowLSTM)])
+                                [('mowLSTM',models.mixLSTM)])
 
 if args['mode']=='lstm':
     if args['synthstart']:

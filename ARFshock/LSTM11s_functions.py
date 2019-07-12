@@ -13,9 +13,6 @@ import torch.utils.data as data
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
 
-jiaxuan_save = os.environ['jiaxuan_save'] + "shock/save/"
-jeeheh_save = os.environ['jeeheh_save']
-
 def real_train(train_loader, model, args, optimizer):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -96,8 +93,8 @@ def real_test(test_loader, model, args, save_scores=False):
     #   .format(test_loss, correct, len(test_loader.dataset),
     #           100. * correct / len(test_loader.dataset),auc))
     if save_scores: 
-        np.savez(jiaxuan_save+args['modelname']+'_testscores', pred=predicted_max, y_true=y_true_last,args=args)
-        torch.save(model.state_dict(),  jiaxuan_save+args['modelname'] + ".ckpt")
+        np.savez(args['savedir']+args['modelname']+'_testscores', pred=predicted_max, y_true=y_true_last,args=args)
+        torch.save(model.state_dict(),  args['savedir']+args['modelname'] + ".ckpt")
     return auc,test_loss,auc_last,auc_max,auc_last5
 
 

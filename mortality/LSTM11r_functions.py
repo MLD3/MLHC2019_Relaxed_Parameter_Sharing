@@ -14,7 +14,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
 import os
 
-jiaxuan_save = os.environ['jiaxuan_save'] + "IHM/save/"
+savename_ = 'save/'
 jeeheh_save = os.environ['jeeheh_save']
 
 def count_parameters(model):
@@ -99,8 +99,8 @@ def real_test(test_loader, model, args, save_scores=False):
     #   .format(test_loss, correct, len(test_loader.dataset),
     #           100. * correct / len(test_loader.dataset),auc))
     if save_scores:
-        np.savez(jiaxuan_save+args['modelname']+'_testscores', pred=predicted_max,y_true=y_true_last,args=args)
-        torch.save(model.state_dict(),  jiaxuan_save+args['modelname'] + ".ckpt")        
+        np.savez(savename_+args['modelname']+'_testscores', pred=predicted_max,y_true=y_true_last,args=args)
+        torch.save(model.state_dict(),  savename_+args['modelname'] + ".ckpt")        
         
     return auc,test_loss,auc_last,auc_max,auc_last5
 
@@ -124,15 +124,16 @@ def real_data_search3(args, real_data, modelname, Net):
     if args['realstart']:
         train_data = real_data('train',args)
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
-        np.save(jiaxuan_save+args['modelname']+'sample_ind', train_data.sample_ind)
+        np.save(savename_+args['modelname']+'sample_ind', train_data.sample_ind)
     else:
         jeeheh_place = jeeheh_save+args['genmodelname']+'sample_ind.npy'
-        jiaxuan_place = jiaxuan_save+args['genmodelname']+'sample_ind.npy'        
+        new_place = savename_+args['genmodelname']+'sample_ind.npy'        
         if os.path.exists(jeeheh_place):
             train_data = real_data('train',args,sample_ind=np.load(jeeheh_place))
         else:
-            train_data = real_data('train',args,sample_ind=np.load(jiaxuan_place))            
-        train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
+            train_data = real_data('train',args,sample_ind=np.load(new_place)) 
+        train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],
+                                       shuffle=True)
         
     # Runs
     for run in range(args['budget']):
@@ -167,9 +168,9 @@ def real_data_search3(args, real_data, modelname, Net):
                   format(run,epoch,training_loss,zval_auc,zval_auc_last,zval_auc_max))
             early_stop.append(zval_auc_max)
             if zval_auc_max>val_auc_max_all:
-                # torch.save(model.state_dict(),jiaxuan_save+args['modelname']+'_hp_search.pth.tar')
+                # torch.save(model.state_dict(),savename_+args['modelname']+'_hp_search.pth.tar')
                 # if args['verbose']==True: test(test_loader,model,args,verbose=True)
-                # torch.save(model.state_dict(),jiaxuan_save+args['modelname']+'.pth.tar')
+                # torch.save(model.state_dict(),savename_+args['modelname']+'.pth.tar')
                 val_auc_max_all = zval_auc_max
             if zval_auc_max>val_auc_max_run: 
                 val_auc_run, epoch_run, val_auc_run_last, val_auc_max_run= zval_auc, epoch, zval_auc_last, zval_auc_max
@@ -195,7 +196,7 @@ def real_data_search3(args, real_data, modelname, Net):
                                    'num_params':[count_parameters(model)],\
                                   'kvdims':[args['kvdims']],'num_filters':[args['num_filters']]}),sort=False)
         df.reset_index(inplace=True,drop=True)
-        df.to_hdf(jiaxuan_save+args['modelname']+'_data_search.h5',key='data',mode='w')
+        df.to_hdf(savename_+args['modelname']+'_data_search.h5',key='data',mode='w')
     
     df['N'] = args['N']
     df['model'] = [modelname]*df.shape[0]
@@ -203,7 +204,7 @@ def real_data_search3(args, real_data, modelname, Net):
     df['batch_size']=args['batch_size']
     df['budget']=args['budget']
     df['epochs']=args['epochs']
-    df.to_hdf(jiaxuan_save+args['modelname']+'_data_search.h5',key='data',mode='w')
+    df.to_hdf(savename_+args['modelname']+'_data_search.h5',key='data',mode='w')
     return df
 
 def empBSCI_old(stat_bs,stat,ci):

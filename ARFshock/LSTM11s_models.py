@@ -14,7 +14,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
 from lib.model import ExampleMowLSTM
 
-class mowLSTM(nn.Module):
+class mixLSTM(nn.Module):
 
     def __init__(self, args, setKT=True):
         nn.Module.__init__(self)
@@ -55,25 +55,6 @@ class mowLSTM(nn.Module):
     def after_backward(self):
         return 
         
-class pytorchLSTM(nn.Module):
-
-    def __init__(self, args):
-        """Initialize params."""
-        super(pytorchLSTM, self).__init__()
-        self.args=args
-        self.lstm=nn.LSTM(input_size=args['d'], hidden_size=args['hidden_size'], batch_first=True)
-        self.fc = nn.Linear(args['hidden_size'], args['num_classes'])
-    
-    def init_hidden(self):
-        self.h0 = torch.zeros(1, self.args['batch_size'], self.args['hidden_size']).cuda()
-        self.c0 = torch.zeros(1, self.args['batch_size'], self.args['hidden_size']).cuda()
-        
-    def forward(self, input):
-        output, (hn,cn) = self.lstm(input, (self.h0,self.c0))
-        output = F.relu(self.fc(output))
-        return output
-
-
 def orthogonal(shape):
     flat_shape = (int(shape[0]), int(np.prod(shape[1:])))
     a = np.random.normal(0.0, 1.0, flat_shape)

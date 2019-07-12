@@ -42,12 +42,8 @@ parser.add_argument('--nidLSTM',type=int,default=0)
 parser.add_argument('--realstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=24) #must be even
 parser.add_argument('--te_base',type=float,default=10000.0)
-
-jiaxuan_save = os.environ['jiaxuan_save'] + "shock/save/"
-jeeheh_save = os.environ['jeeheh_save']
-
 parser.add_argument('--verbose',type=bool,default=False)
-parser.add_argument('--savedir',type=str,default=jiaxuan_save)
+parser.add_argument('--savedir',type=str,default='save/')
 
 
 #args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
@@ -81,8 +77,8 @@ if args['mode']=='Shock4': functions.real_data_search3(args, datagen.real_data,'
 if args['mode']=='Shock5': functions.real_data_search3(args, datagen.real_data,'nidLSTM 6',models.nidLSTM)
 if args['mode']=='Shock6': functions.real_data_search3(args, datagen.real_data,'nidLSTM 16',models.nidLSTM)
     
-if args['mode']=='Shock_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mowLSTM)
-if args['mode']=='ARF_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mowLSTM)
+if args['mode']=='Shock_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mixLSTM)
+if args['mode']=='ARF_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mixLSTM)
 
 if args['mode']=='ARF12hr': 
     args['T']=12

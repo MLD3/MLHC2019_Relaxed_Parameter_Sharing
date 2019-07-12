@@ -72,6 +72,6 @@ if args['mode']=='real9': functions.real_data_search3(args, datagen.IHM_data,'TC
 if args['mode']=='real10': functions.real_data_search3(args, datagen.IHM_data,'SNAIL',models.SNAIL)
 if args['mode']=='real11': functions.real_data_search3(args, datagen.IHM_data,'HyperLSTM',models.HyperLSTM)
 if args['mode']=='real12': functions.real_data_search3(args, datagen.IHM_data,'LSTMTE',models.LSTMTE)
-if args['mode']=='real_mow': functions.real_data_search3(args, datagen.IHM_data,'mow',models.mowLSTM)
+if args['mode']=='real_mow': functions.real_data_search3(args, datagen.IHM_data,'mow',models.mixLSTM)
 
     
