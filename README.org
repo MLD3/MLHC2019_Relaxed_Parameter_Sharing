@@ -10,6 +10,11 @@ mortality/ contains code for in hospitial mortality dataset
 
 synthetic/ contains code for synthetic dataset
 
+* Download and Process the Data 
+Follow directions to complete the set up for the MIMIC III Benchmark dataset for in-hospital mortality: [[https://github.com/YerevaNN/mimic3-benchmarks]].
+
+
+
 * Running the code
 
 TODO: Jeeheh, could you describe the command for running the code here? there are options such as real_data I'm not familiar with
