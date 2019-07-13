@@ -1,6 +1,6 @@
 # Location of input files
-mimic3_path: ../data/mimic3_csv/
-data_path: ../data/processed/
+mimic3_path: /data1/mimic/raw_csvs/
+data_path: ./processed/
 
 # Customize table headers
 column_names:
