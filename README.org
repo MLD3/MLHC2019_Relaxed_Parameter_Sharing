@@ -13,7 +13,12 @@ synthetic/ contains code for synthetic dataset
 * Download and Process the Data 
 Follow directions to complete the set up for the MIMIC III Benchmark dataset for in-hospital mortality: [[https://github.com/YerevaNN/mimic3-benchmarks]].
 
+Follow directions in ARFshock_label to produce ARF and shock labels. 
 
+Run savedata.py using python2. Example code below where MIMIC III benchmark data is saved in /data/mimic/ and data files for model training will be saved in /data/mlhc2019_RWS/
+#+BEGIN_SRC bash
+python savedata.py --datadir /data/mimic/ --savedir /data/mlhc2019_RWS/ 
+#+END_SRC
 
 * Running the code
 
