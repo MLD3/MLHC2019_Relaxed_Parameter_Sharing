@@ -22,7 +22,7 @@ class real_data(data.Dataset):
                 on a sample.
         """
         # Bring in Data
-        savepath = '/data1/jeeheh/mimic/mimic3models/in_hospital_mortality/joh data extraction/'
+        savepath = args['datadir']
         if mode=='train': data_raw = np.load(savepath+'IHMtrain.npz') 
         if mode=='val': data_raw = np.load(savepath+'IHMval.npz')
         if mode=='test': data_raw = np.load(savepath+'IHMtest.npz')
@@ -48,12 +48,12 @@ class real_data(data.Dataset):
             raise ValueError('Chosen N is larger than training set size')
         if (mode=='train') & (args['N']!=0):
             if sample_ind is None:
-                print('--New Subsampling Occurring ~ did you expect this.?')
+                print('--New Subsampling Occurring')
                 self.sample_ind = np.random.choice(len(data_raw['labels']), size=args['N'], replace=False)
             elif len(sample_ind)!=args['N']:
                 raise ValueError('Length of sample_ind != N')
             else: 
-                print('--Subsampling (old) Occurring ~ did you expect this.?')
+                print('--Subsampling (old) Occurring')
                 self.sample_ind=sample_ind
             self.data = torch.from_numpy(data_raw['data'][self.sample_ind,:,:]).type(torch.FloatTensor).cuda()
             self.labels = torch.from_numpy(data_raw['labels'][self.sample_ind]).type(torch.LongTensor).cuda()

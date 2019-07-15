@@ -8,6 +8,7 @@ import torch.optim as optim
 import torchvision
 from torchvision import datasets, transforms
 import torch.utils.data as data
+import os
 
 class IHM_data(data.Dataset):
 
@@ -20,9 +21,9 @@ class IHM_data(data.Dataset):
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        if mode=='train': data_raw =np.load('/data/jeeheh/IHM_train.npz') 
-        if mode=='val': data_raw =np.load('/data/jeeheh/IHM_val.npz')
-        if mode=='test': data_raw =np.load('/data/jeeheh/IHM_test.npz')
+        if mode=='train': data_raw =np.load(os.path.join(args['datadir'],'IHM_train.npz')) 
+        if mode=='val': data_raw =np.load(os.path.join(args['datadir'],'IHM_val.npz'))
+        if mode=='test': data_raw =np.load(os.path.join(args['datadir'],'IHM_test.npz'))
                 
         if (mode=='train') & (args['N']!=0):
             if sample_ind is None:

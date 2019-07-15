@@ -39,8 +39,8 @@ parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--synthstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=16) #must be even
 parser.add_argument('--te_base',type=float,default=10000.0)
+parser.add_argument('--savedir',type=str,default='/data1/jeeheh/')
 
-#args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
 args=parser.parse_args()
 args=vars(args)
 if args['genmodelname']=='DEFAULT': args['genmodelname']=args['modelname']

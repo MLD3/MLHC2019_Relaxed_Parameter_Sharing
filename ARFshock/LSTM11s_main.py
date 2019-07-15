@@ -38,6 +38,7 @@ parser.add_argument('--te_size',type=int,default=24) #must be even
 parser.add_argument('--te_base',type=float,default=10000.0)
 parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--savedir',type=str,default='save/')
+parser.add_argument('--datadir',type=str,default='/data1/jeeheh/mimic/mimic3models/in_hospital_mortality/joh data extraction/')
 
 
 args=parser.parse_args()

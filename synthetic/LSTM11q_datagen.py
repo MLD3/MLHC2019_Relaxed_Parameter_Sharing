@@ -14,6 +14,7 @@ from sklearn import metrics
 import itertools
 import random
 from scipy.stats import entropy
+import os
 
 
 class synth_data2(data.Dataset):
@@ -84,7 +85,7 @@ def synth_evaluate2(args):
     
     for run in range(args['synth_num']):
         eval_data = synth_data2(args)
-        np.savez('/data1/jeeheh/'+args['modelname']+'_model'+str(run), k=args['k'], delta=args['delta'],\
+        np.savez(os.path.join(args['savedir'],args['modelname']+'_model'+str(run)), k=args['k'], delta=args['delta'],\
                  k_dist=eval_data.k_dist, d_dist=eval_data.d_dist)
     print('synth_num: {}'.format(args['synth_num']))
     return

@@ -41,6 +41,8 @@ parser.add_argument('--te_base',type=float,default=10000.0)
 
 parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--savedir',type=str,default='/data1/jeeheh/')
+parser.add_argument('--datadir',type=str,default='/data1/jeeheh/mimic/mimic3models/in_hospital_mortality/joh data extraction/')
+
 
 #args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
 args=parser.parse_args()
