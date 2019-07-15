@@ -57,7 +57,7 @@ def main():
     convert_inputevents_units()
     verify_output()
     
-    data = stack_attr_columns()
+#     data = stack_attr_columns()
 
 
 ################################
@@ -88,7 +88,6 @@ config['n_icustays'] = 23620
 
 import pathlib
 pathlib.Path(data_path, 'prep').mkdir(parents=True, exist_ok=True)
-pathlib.Path(data_path, 'formatted').mkdir(parents=True, exist_ok=True)
 
 def print_header(*content, char='-'):
     print()
@@ -604,126 +603,16 @@ def verify_output():
     count_dict = {
         'inputevents_mv': 2893707, # filtered; raw: 3585130
         'procedureevents_mv': 256001,
-        'outputevents': 1549176,
-        'datetimeevents': 2651118,
-        'microbiologyevents': 174392, # specimen only; before remove duplicates: 283886
-        'labevents': 10114036,
+#         'outputevents': 1549176,
+#         'datetimeevents': 2651118,
+#         'microbiologyevents': 174392, # specimen only; before remove duplicates: 283886
+#         'labevents': 10114036,
         'chartevents': 103868573,
     }
     for fname, n_rows in count_dict.items():
         print('-', fname)
         df = pd.read_pickle(data_path + 'prep/{}.p'.format(fname))
         assert n_rows == len(df), 'Expected {}, got {}'.format(n_rows, len(df))
-
-
-def stack_attr_columns():
-    """
-    Input:
-    –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-    |  ID  |  t (or t_start + t_end)  |  ATTR_1  |  ATTR_2  |  ATTR_3  |  ...  |
-    –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-    
-    Output:
-    ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-    |  ID  |  t (or t_start + t_end)  |  variable_name  |  variable_value  |
-    ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-    where the values of "variable_name" columns are: ATTR_1, ATTR_2, ATTR_3, ...
-    """
-    print_header('Formatting - Stack value columns', char='*')
-    formatted_data = {}
-    
-    print("Stacking invariant table...")
-    invariant_data = pd.read_csv(data_path + 'prep/invariant.csv', index_col='ID')
-    invariant_data['FIRST_WARDID'] = invariant_data['FIRST_WARDID'].apply(lambda x: 'WARDID=' + str(x))
-    invariant_formatted = invariant_data.reset_index().melt(id_vars=['ID'], var_name='variable_name', value_name='variable_value')
-    invariant_formatted['t'] = np.nan
-    invariant_formatted = invariant_formatted[['ID', 't', 'variable_name', 'variable_value']]
-    formatted_data['TIME_INVARIANT'] = invariant_formatted
-    
-    # save file for manual inspection only, not used in downstream processing
-    invariant_formatted.to_csv(data_path + 'formatted/invariant_data.csv', index=False)
-
-    print("Stacking event tables with attribute columns...")
-    fnames = [
-        'LABEVENTS',
-        'MICROBIOLOGYEVENTS',
-        'DATETIMEEVENTS',
-        'OUTPUTEVENTS',
-        'CHARTEVENTS',
-        'INPUTEVENTS_MV',
-        'PROCEDUREEVENTS_MV',
-    ]
-    
-    # columns that will be extracted from each table
-    attribute_cols = {
-        'LABEVENTS': ['VALUE'],
-        'MICROBIOLOGYEVENTS': [],
-        'DATETIMEEVENTS': ['VALUE'],
-        'OUTPUTEVENTS': ['VALUE'],
-        'CHARTEVENTS': ['VALUE'],
-        'INPUTEVENTS_MV': ['InputRoute', 'Amount', 'Rate', 'Dose'],
-        'PROCEDUREEVENTS_MV': [],
-    }
-    
-    for fname in tqdm(fnames):
-        df = pd.read_pickle(data_path + 'prep/{}.p'.format(fname.lower()))
-        df = df.rename(columns={'ICUSTAY_ID': 'ID', 'ITEMID': 'variable_name'})
-
-        should_melt = False
-        t_cols = df.columns.intersection(['t', 't_start', 't_end']).tolist()
-
-        if 't' in df.columns:
-            id_cols = ['ID', 't', 'variable_name']
-            # only changing the format if the value or other attribute cols exist
-            if len(df.columns) > 3:
-                should_melt = True
-        elif 't_start' in df.columns and 't_end' in df.columns:
-            id_cols = ['ID', 't_start', 't_end', 'variable_name']
-            # only changing the format if the value or other attribute cols exist
-            if len(df.columns) > 4:
-                should_melt = True
-        else:
-            assert False
-
-        df = df[id_cols + attribute_cols[fname]]
-
-        # Extract each attribute column as a separate variable
-        if len(attribute_cols[fname]) == 0:
-            df_out = df
-            df_out['variable_value'] = 1
-        elif attribute_cols[fname] == ['VALUE']:
-            df_out = df.rename(columns={'VALUE': 'variable_value'})
-            df_out = df_out[['ID'] + t_cols + ['variable_name', 'variable_value']]
-        elif should_melt:
-            df_mask = df[id_cols].copy()
-            df_mask['variable_value'] = 1
-            df_attr = df.melt(id_vars=id_cols, var_name='attribute', value_name='variable_value')
-            df_attr['variable_name'] = df_attr['variable_name'].str.cat(df_attr['attribute'], sep='_')
-            df_attr = df_attr.drop(columns=['attribute'])
-            df_out = pd.concat([df_mask, df_attr], sort=False, ignore_index=True)
-            df_out = df_out.dropna(subset=['variable_value'])
-        else:
-            assert False
-
-        formatted_data[fname] = df_out
-    
-    print('Done!')
-    with open(data_path + 'formatted/all_data.stacked.p', 'wb') as f:
-        pickle.dump(formatted_data, f)
-    
-    """
-    `formatted_data` is a dictionary that maps each table name to a pd.DataFrame, 
-    with either of the following two column formats:
-    - for discrete time-stamps,
-        –––––––––––––––––––––––––––––––––––––––––––––––––––
-        |  ID  |  t  |  variable_name  |  variable_value  |
-        –––––––––––––––––––––––––––––––––––––––––––––––––––
-    - for continuous time-stamps,
-        –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-        |  ID  |  t_start  |  t_end  |  variable_name  |  variable_value  |
-        –––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-    """
-    return formatted_data
 
 
 if __name__ == '__main__':
