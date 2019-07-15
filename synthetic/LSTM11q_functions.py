@@ -24,7 +24,6 @@ def train(train_loader, model, args, optimizer, verbose=False):
         # if args['use_cuda']:
         #     data, target = data.cuda(), target.cuda()
         data, target = Variable(data), Variable(target)
-        #print(data.shape, target.shape)
         optimizer.zero_grad()
         output = model(data) #includes all time steps
         
@@ -91,20 +90,9 @@ def HP_search(args, Net, train_loader, val_loader,test_loader):
         #Draw HP
         args['hidden_size']=int(np.random.choice([100,150,300,500,700,900,1100]))
         args['hyp_hidden_size']=int(np.random.choice([25,50,75,100,125,150]))
-        args['ratio']=np.random.choice([.1,.25,.5,.75,.9])
-        args['rLSTM_init']=np.random.choice([.5,1,3,6,9])
-        args['sigma']=np.random.choice([0.5,1,2,3,4,5])
-        args['kvdims']=np.random.choice([2,5,7,10,15,17,20])
-        if 'TCN' in args['current_modeltype']: args['num_filters']=np.random.choice([5,10,20,30,40,50,60,70])
-        else: args['num_filters']=np.random.choice([2,5,7,10,15,17,20])
-
 
         #Init Model
-        # print('** Init model')
-        # start_time = time.time()
         model = Net(args)
-        # elapsed_time = time.time() - start_time
-        # print('** ** end {:.1} min'.format(elapsed_time/60))
         
         if args['use_cuda']:
             model.cuda()
@@ -114,7 +102,6 @@ def HP_search(args, Net, train_loader, val_loader,test_loader):
         val_loss_run, epoch_run=np.infty,0        
         early_stop=[]
         for epoch in range(1, args['epochs'] + 1):
-            # print('-- Run {}, epoch {}, val loss {}, hidden size {}'.format(run,epoch,val_loss_run,args['hidden_size']))
             train(train_loader, model, args, optimizer)            
             zval_loss, zval_loss_t =test(val_loader,model,args)
             early_stop.append(zval_loss)
@@ -136,15 +123,12 @@ def HP_search(args, Net, train_loader, val_loader,test_loader):
                     break
                 
         #Save Run Information  
-        
         print('Best test loss run {}: {}'.format(run,val_loss_run))
         df=df.append(pd.DataFrame({'val_loss':[val_loss_run],'test_loss':[ztest_loss],\
                                    'val_loss_t':[val_loss_t_run],'test_loss_t':[ztest_loss_t],\
                                    'hidden_size':[args['hidden_size']],'epoch':[epoch_run],\
-                                  'ratio':[args['ratio']],'hyp_hidden_size':[args['hyp_hidden_size']],\
-                                  'rLSTM_init':[args['rLSTM_init']],'rLSTM_sigma':[args['sigma']],\
-                                 'kvdims':[args['kvdims']],'num_filters':[args['num_filters']],\
-                                 'num_params':[count_parameters(model)]}),sort=True)
+                                   'hyp_hidden_size':[args['hyp_hidden_size']],\
+                                   'num_params':[count_parameters(model)]}),sort=True)
         df.reset_index(inplace=True,drop=True)
 
     return df
@@ -158,29 +142,6 @@ def convert_distb(a):
     a_sum = sum(a)
     a = a/a_sum
     return a
-
-
-def truerandom2(data_loader, args):
-    test_loss = 0    
-    for data, target in data_loader:
-        target_size = target.shape[0]*target.shape[1]*target.shape[2]
-        output = np.zeros(target_size)
-        output[np.random.choice(target_size, size=int(target_size/10), replace=False)]=np.random.uniform(size=int(target_size/10))*100
-        output=np.resize(output, target.shape)
-        
-        output = output[:,args['k']:,:]
-        output = torch.from_numpy(output).type(torch.FloatTensor).cuda()
-        output = Variable(output,requires_grad=False)
-        target = target[:,args['k']:,:].contiguous()
-        target = Variable(target,requires_grad=False)
-        test_loss += F.mse_loss(output.view(-1,args['output_size']), target.view(-1,args['output_size']), reduction='sum').item()
-        test_loss /= len(data_loader.dataset)*(args['T']-args['k'])
-        
-    if args['verbose']==True:
-        np.savez(savename_+args['modelname']+'_random', output=output,target=target)
-        
-    return test_loss
-
 
 def synth_data_search(args, synth_data, model_list):
     df=pd.DataFrame({'l2':[],'hidden_size':[],'epoch':[],'model':[]})
@@ -232,7 +193,7 @@ def synth_data_search(args, synth_data, model_list):
 
 
 def do_bootstrap(pred, target, args):
-    #code seeded from MLD3/ICHE therefore says AUROC but it's using mse loss
+    #code from MLD3/ICHE therefore says AUROC but it's using mse loss
     nrep=1000
     lower=np.around(.025*nrep,decimals=0).astype(int)
     upper=np.around(.975*nrep,decimals=0).astype(int)

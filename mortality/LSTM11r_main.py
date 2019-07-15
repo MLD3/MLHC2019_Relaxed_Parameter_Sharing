@@ -33,11 +33,7 @@ parser.add_argument('--delta',type=float,default=.05)
 
 parser.add_argument('--hidden_size',type=int,default=20)
 parser.add_argument('--hyp_hidden_size',type=int,default=20)
-parser.add_argument('--ratio',type=float,default=.5)
-parser.add_argument('--sigma',type=float,default=1)
 parser.add_argument('--batch_size',type=int,default=8)
-parser.add_argument('--kvdims',type=int,default=10)
-parser.add_argument('--num_filters',type=int,default=10)
 parser.add_argument('--nidLSTM',type=int,default=0)
 parser.add_argument('--realstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=24) #must be even
@@ -45,6 +41,8 @@ parser.add_argument('--te_base',type=float,default=10000.0)
 
 parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--savedir',type=str,default='/data1/jeeheh/')
+parser.add_argument('--datadir',type=str,default='/data1/jeeheh/mimic/mimic3models/in_hospital_mortality/joh data extraction/')
+
 
 #args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
 args=parser.parse_args()

@@ -4,19 +4,17 @@ import torch, os
 import pickle
 import os
 
-import LSTM11s_datagen as datagen ## CHANGE with VERSION ##
-import LSTM11s_functions as functions ## CHANGE with VERSION ##
-import LSTM11s_models as models ## CHANGE with VERSION ##
+import LSTM11s_datagen as datagen 
+import LSTM11s_functions as functions 
+import LSTM11s_models as models 
 
 '''Settings'''
 parser=argparse.ArgumentParser()
 
-parser.add_argument('--modelname',type=str,required=True) ## CHANGE with VERSION ##
-parser.add_argument('--genmodelname',type=str,default='DEFAULT') ## CHANGE with VERSION ##
+parser.add_argument('--modelname',type=str,required=True) 
+parser.add_argument('--genmodelname',type=str,default='DEFAULT')
 parser.add_argument('--mode',type=str,required=True)
 parser.add_argument('--cuda',type=int,default=0)
-parser.add_argument('--gatenames',type=str, nargs="+", default=[],
-                    help="gates to change", choices=["input", "output", "cell", "forget"])
 
 parser.add_argument('--budget',type=int,default=20) #HP search budget
 parser.add_argument('--epochs',type=int,default=30)
@@ -33,20 +31,16 @@ parser.add_argument('--share_num',type=int,default=2,help="share number for moo 
 
 parser.add_argument('--hidden_size',type=int,default=20)
 parser.add_argument('--hyp_hidden_size',type=int,default=20)
-parser.add_argument('--ratio',type=float,default=.5)
-parser.add_argument('--sigma',type=float,default=1)
 parser.add_argument('--batch_size',type=int,default=8)
-parser.add_argument('--kvdims',type=int,default=10)
-parser.add_argument('--num_filters',type=int,default=10)
 parser.add_argument('--nidLSTM',type=int,default=0)
 parser.add_argument('--realstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=24) #must be even
 parser.add_argument('--te_base',type=float,default=10000.0)
 parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--savedir',type=str,default='save/')
+parser.add_argument('--datadir',type=str,default='/data1/jeeheh/mimic/mimic3models/in_hospital_mortality/joh data extraction/')
 
 
-#args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
 args=parser.parse_args()
 args=vars(args)
 
@@ -62,7 +56,6 @@ if args['use_cuda']:
     
     
 '''Test Models on Datasets'''
-## Need to replace datagen.IHM_data with datagen.real_data
 if args['mode']=='ARF1': functions.real_data_search3(args, datagen.real_data,'LSTM',models.LSTM)
 if args['mode']=='ARF2': functions.real_data_search3(args, datagen.real_data,'nidLSTM 1',models.nidLSTM)
 if args['mode']=='ARF3': functions.real_data_search3(args, datagen.real_data,'nidLSTM 24',models.nidLSTM)
@@ -79,10 +72,3 @@ if args['mode']=='Shock6': functions.real_data_search3(args, datagen.real_data,'
     
 if args['mode']=='Shock_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mixLSTM)
 if args['mode']=='ARF_mow': functions.real_data_search3(args, datagen.real_data,'mow',models.mixLSTM)
-
-if args['mode']=='ARF12hr': 
-    args['T']=12
-    functions.real_data_search3(args, datagen.real_data12,'LSTM',models.LSTM)
-if args['mode']=='Shock12hr': 
-    args['T']=12
-    functions.real_data_search3(args, datagen.real_data12,'LSTM',models.LSTM)
