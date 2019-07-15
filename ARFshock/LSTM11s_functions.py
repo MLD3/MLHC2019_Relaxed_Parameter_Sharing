@@ -25,8 +25,6 @@ def real_train(train_loader, model, args, optimizer):
         optimizer.zero_grad()
         output = model(data)
         
-        # loss = F.nll_loss(output[:,-1,:], target)
-        # print(output.contiguous().view(-1,args['num_classes']).shape, target.shape)
         loss = F.nll_loss(output.contiguous().view(-1,args['num_classes']), target.flatten())
         loss.backward()
         if args['mode'] in ['Shock_moo', 'Shock_mow',
@@ -36,10 +34,6 @@ def real_train(train_loader, model, args, optimizer):
             model.after_backward()
         
         optimizer.step()
-        # if batch_idx % 500 == 0:
-        #     print('Train: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #         batch_idx * len(data), len(train_loader.dataset),
-        #         100. * batch_idx / len(train_loader), loss.data[0]))
     return loss.item()
             
 def real_test(test_loader, model, args, save_scores=False):  
@@ -61,15 +55,9 @@ def real_test(test_loader, model, args, save_scores=False):
         if len(target)<args['batch_size']:
             continue
         output = model(data)
-        # output = output[:,-1,:]
         
         # SUM UP BATCH LOSS
-        # test_loss += F.nll_loss(output, target, size_average=False).item()
         test_loss += F.nll_loss(output.contiguous().view(-1,args['num_classes']), target.flatten(), size_average=False).item()
-        # GET THE INDEX OF THE MAX LOG-PROBABILITY
-        # pred = output.data.max(1, keepdim=True)[1]
-        # pred = output.contiguous().view(-1,args['num_classes']).data.max(1, keepdim=True)[1]
-        # correct += pred.eq(target.data.view_as(pred)).cpu().sum()
         
         # AUC
         if args['use_cuda']:
@@ -89,9 +77,6 @@ def real_test(test_loader, model, args, save_scores=False):
     auc_max=roc_auc_score(y_true_last,predicted_max)
     auc_last5=roc_auc_score(y_true_last5,predicted_last5)
     
-    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), AUC: {:.4f}\n'
-    #   .format(test_loss, correct, len(test_loader.dataset),
-    #           100. * correct / len(test_loader.dataset),auc))
     if save_scores: 
         np.savez(args['savedir']+args['modelname']+'_testscores', pred=predicted_max, y_true=y_true_last,args=args)
         torch.save(model.state_dict(),  args['savedir']+args['modelname'] + ".ckpt")
@@ -131,16 +116,6 @@ def real_data_search3(args, real_data, modelname, Net):
         #Draw HP 
         args['hidden_size']=int(np.random.choice(args['hidden_size_list']))
         args['hyp_hidden_size']=int(np.random.choice([25,50,75,100,125,150]))
-        args['ratio']=np.random.choice([.1,.25,.5,.75,.9])
-        args['rLSTM_init']=np.random.choice([.5,1,3,6,9])
-        # args['sigma']=np.random.choice([0.5,1,2,3,4,5])
-        args['sigma']=np.random.choice([12, 6, 24, 18])
-        args['kvdims']=np.random.choice([15,20,25,30,35,40])
-        # if 'SNAIL' in args['current_modeltype']:
-        #     args['num_filters']=np.random.choice([10,15,20,25,30,35])
-        # else:
-        #     args['num_filters']=np.random.choice([10,20,40,80,160,320])
-        args['num_filters']=np.random.choice([160,320,640,1280,2560])
 
         #Init Model
         model = Net(args)
@@ -178,10 +153,7 @@ def real_data_search3(args, real_data, modelname, Net):
         print('Best val auc run {}: {}'.format(run,val_auc_run))
         df=df.append(pd.DataFrame({'val_auc':[val_auc_run],'test_auc':[ztest_auc],'val_auc_last':[val_auc_run_last],'val_auc_max':[val_auc_max_run],\
                                    'test_auc_last':[ztest_auc_last],'test_auc_max':[ztest_auc_max],'test_auc_last5':[ztest_auc_last5],\
-                                   'hidden_size':[args['hidden_size']],'run':[run],\
-                                  'ratio':[args['ratio']],'hyp_hidden_size':[args['hyp_hidden_size']],\
-                                  'rLSTM_init':[args['rLSTM_init']],'rLSTM_sigma':[args['sigma']],\
-                                  'kvdims':[args['kvdims']],'num_filters':[args['num_filters']]}),sort=False)
+                                   'hidden_size':[args['hidden_size']],'run':[run],'hyp_hidden_size':[args['hyp_hidden_size']]}),sort=False)
         df.reset_index(inplace=True,drop=True)
         df.to_hdf(args['savedir']+args['modelname']+'_data_search.h5',key='data',mode='w')
     

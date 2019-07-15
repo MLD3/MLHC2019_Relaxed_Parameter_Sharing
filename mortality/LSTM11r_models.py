@@ -73,82 +73,29 @@ def lstm_ortho_initializer(shape, scale=1.0):
     return t
 
 def layer_norm_all(h, batch_size, base, num_units, epsilon = 1e-3, gamma = None, beta = None):
-    #reuse=False, scope="layer_norm", gamma_start=1.0, use_bias=True):
-                  
-    # Layer Norm (faster version, but not using defun)
-    # Performas layer norm on multiple base at once (ie, i, g, j, o for lstm)
-    # Reshapes h in to perform layer norm in parallel
-    # base = 4 for LSTM
-    
-    # print(h.shape) #1 100 600
-    # h_reshape = tf.reshape(h, [tf.shape(h)[0], base, num_units]) 
-        #joh: this step is trying to get from (batch_size x 4*hidden_state_size) -> (batch_size, 4, hidden_state_size)
     h_reshape = h.view(batch_size, base, num_units)
-    # mean = tf.reduce_mean(h_reshape, [2], keepdims=True)
-        #joh: this calulates the mean along hidden_state size -> returns matrix of shape (batch_size, 4, 1)
     mean = torch.mean(h_reshape, 2, keepdim=True)
-    # var = tf.reduce_mean(tf.square(h_reshape - mean), [2], keepdims=True)
-        #joh: this calculates average variance along hidden state size -> returns matrix of shape (batch_size, 4, 1)
     var = torch.mean(torch.mul(h_reshape-mean, h_reshape-mean), 2, keepdim=True)
-    # epsilon = tf.constant(epsilon)
-    # rstd = tf.rsqrt(var + epsilon) 
-        #joh: this returns elementwise 1/sqrt(x)
     rstd = torch.reciprocal(torch.sqrt(torch.add(var, epsilon)))
-    # h_reshape = (h_reshape - mean) * rstd
     h_reshape = (h_reshape - mean) * rstd
-    # h = tf.reshape(h_reshape, [tf.shape(h_reshape)[0], base * num_units])
     h = h_reshape.view(batch_size, base*num_units)
-#     with tf.variable_scope(scope):
-#         if reuse == True:
-#             tf.get_variable_scope().reuse_variables()
-        # gamma = tf.get_variable('ln_gamma', [4*num_units], initializer=tf.constant_initializer(gamma_start))
-        # if use_bias:
-            # beta = tf.get_variable('ln_beta', [4*num_units], initializer=tf.constant_initializer(0.0))
-    # if use_bias:
-        # return gamma*h + beta
     if (gamma is not None) and (beta is not None):
         return gamma*h + beta
-    # return gamma * h
-        #joh: gamma and beta are learnable parameters 
     return gamma * h
 
 def layer_norm(x, num_units, epsilon = 1e-3, gamma=None, beta=None):
-    # the way I've written this - we can't have gamme or beta = None
-    # scope="layer_norm", gamma_start=1.0, reuse=False, use_bias=True
-    
-    # print(x.shape) # (1, 100, 100) 
-    # joh: x is the cell state -> batch_size x hidden_state_size
-    # axes = [1]
     x = x.view(x.shape[1], x.shape[2])
-    # mean = tf.reduce_mean(x, axes, keepdims=True)
-    # joh: tf implementation also expects cell state to be batch_size x hidden_state_size
     mean = torch.mean(x, 1, keepdim=True)
-    # x_shifted = x-mean
     x_shifted = x-mean
-    # var = tf.reduce_mean(tf.square(x_shifted), axes, keepdims=True)
     var = torch.mean(torch.mul(x_shifted,x_shifted), 1, keepdim=True)
-    # inv_std = tf.rsqrt(var + epsilon)
     inv_std = torch.reciprocal(torch.sqrt(torch.add(var, epsilon)))
-    # with tf.variable_scope(scope):
-    #     if reuse == True:
-    #         tf.get_variable_scope().reuse_variables()
-    #     gamma = tf.get_variable('ln_gamma', [num_units], initializer=tf.constant_initializer(gamma_start))
-    # joh: get_variable gets an existing variable with these parameters or makes a new one. 
-    # joh: however, the scope variable passed into this function differs between layer_norm and layer_norm_all
-    #     if use_bias:
-    #         beta = tf.get_variable('ln_beta', [num_units], initializer=tf.constant_initializer(0.0))
     if (gamma is not None) and (beta is not None):
         return (gamma*(x_shifted)*inv_std + beta).view(1, x.shape[0], x.shape[1])
-    # output = gamma*(x_shifted)*inv_std
-    # if use_bias:
-    #     output = output + beta
-    # return output
     return None
 
 class LSTM(nn.Module):
 
     def __init__(self, args):
-        """Initialize params."""
         super(LSTM, self).__init__()
         self.args=args
         self.h0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda()) 
@@ -163,24 +110,17 @@ class LSTM(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        # Added to mimic hypernetwork's LSTM implementation
         self.input_weights.weight.data.uniform_()
         self.hidden_weights.weight.data = torch.from_numpy(\
             lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
             ).type(torch.FloatTensor)
 
     def forward(self, input):
-        """Propogate input through the network."""
-        # tag = None  #
         def recurrence(input, hidden):
-            """Recurrence helper."""
             hx, cx = hidden  # n_b x hidden_dim
             gates = self.input_weights(input) + \
                 self.hidden_weights(hx)
-#             print(gates.shape) #1,8,400
             gates = layer_norm_all(gates, self.args['batch_size'], 4, self.args['hidden_size'], gamma=self.lna_gamma, beta=self.lna_beta)
-            # ingate, forgetgate, cellgate, outgate = gates.view(self.args['batch_size'],-1).chunk(4, 1) 
-            # joh: no longer need view because layer_norm reshapes
             ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
         
@@ -188,19 +128,10 @@ class LSTM(nn.Module):
             forgetgate = torch.sigmoid(forgetgate)
             cellgate = torch.tanh(cellgate)  # o_t
             outgate = torch.sigmoid(outgate)
-            
-#             print(forgetgate.shape) #1,2,400 
-#             print(cx.shape) #1,8,100
-#             print(ingate.shape) #1,2,400
-#             print(cellgate.shape) #1,2,400
-            cy = (forgetgate * cx) + (ingate * cellgate)
-            
-            hy = outgate * torch.tanh(layer_norm(cy, self.args['hidden_size'], gamma=self.ln_gamma, beta=self.ln_beta))            
-            # hy = outgate * F.tanh(cy)  # n_b x hidden_dim
 
+            cy = (forgetgate * cx) + (ingate * cellgate)            
+            hy = outgate * torch.tanh(layer_norm(cy, self.args['hidden_size'], gamma=self.ln_gamma, beta=self.ln_beta))            
             return hy, cy
-        
-        # print(input.shape) #3,48,76 <- batch is already first => batch_size, T, d
         
         input = input.transpose(0, 1)
 
@@ -214,11 +145,7 @@ class LSTM(nn.Module):
             else:
                 output.append(hidden)
 
-            # output.append(hidden[0] if isinstance(hidden, tuple) else hidden)
-            # output.append(isinstance(hidden, tuple) and hidden[0] or hidden)
-
         output = torch.cat(output, 0).view(input.size(0), *output[0].size())
-#         print(output.shape) # 48, 1, 8, 100
         output = output.view(self.args['T'],self.args['batch_size'],self.args['hidden_size']).transpose(0, 1)
 
         yhat = F.log_softmax(self.fc(output.contiguous().view(-1,self.args['hidden_size'])),dim=1)
@@ -241,30 +168,12 @@ class HyperLSTM(nn.Module):
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         self.fc = nn.Linear(args['hidden_size'], args['num_classes'])
         
-        # TRY 2
         self.input_weights = nn.Linear(args['d'], 4 * args['hidden_size'], bias=False)
         self.hidden_weights = nn.Linear(args['hidden_size'], 4 * args['hidden_size'], bias=False)
         self.input_weights.weight.data.uniform_().cuda()
         self.hidden_weights.weight.data = nn.init.orthogonal_(torch.empty(self.hidden_weights.weight.data.shape)).cuda()
         self.bias = Variable(torch.zeros(4*args['hidden_size']).uniform_().cuda())
-        
-        # TRY 1
-        # self.input_weights = Variable((torch.ones(args['d'], 4 * args['hidden_size'])).uniform_().cuda())
-        # k = np.sqrt(1/args['d'])
-        # self.input_bias = Variable(torch.zeros(4*args['hidden_size']).uniform_(-k,k).cuda())        
-        # self.hidden_weights = torch.from_numpy(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size']))).type(torch.FloatTensor)
-        # self.hidden_weights = Variable(self.hidden_weights.cuda())
-        # k = np.sqrt(1/args['hidden_size'])
-        # self.hidden_bias = Variable(torch.zeros(4*args['hidden_size']).uniform_(-k,k).cuda())
-        
-        # ORIG
-        # self.input_weights = nn.Linear(args['d'], 4 * args['hidden_size'])
-        # self.hidden_weights = nn.Linear(args['hidden_size'], 4 * args['hidden_size'])
-        # self.input_weights.weight.data.uniform_()
-        # self.hidden_weights.weight.data = torch.from_numpy(\
-        #     lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
-        #     ).type(torch.FloatTensor)
-        
+                
         # Hypernetwork Specific: Bias
         self.ib_zb = Variable((torch.normal(mean=torch.zeros(self.args['hyp_hidden_size'], self.args['hyp_hidden_size']), 
                                             std=torch.ones(self.args['hyp_hidden_size'], self.args['hyp_hidden_size'])*.01)).cuda())
@@ -366,17 +275,7 @@ class HyperLSTM(nn.Module):
         j = jx + jh + jb
         f = fx + fh + fb
         o = ox + oh + ob
-    
-        # TRY 2
-        # gates = self.input_weights(input) + self.hidden_weights(hx) + self.bias
-
-        # TRY 1
-        # hx_reshape = hx.contiguous().view(self.args['batch_size'],-1)
-        # gates = torch.add(torch.matmul(input, self.input_weights),self.input_bias) + torch.add(torch.matmul(hx_reshape, self.hidden_weights),self.hidden_bias)
-
-        # ORIG
-        # gates = self.input_weights(input) + self.hidden_weights(hx)
-        
+            
         gates = torch.cat((i,j,f,o),1)
         gates = layer_norm_all(gates, self.args['batch_size'], 4, self.args['hidden_size'], gamma=self.lna_gamma, beta=self.lna_beta)
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
@@ -401,8 +300,6 @@ class HyperLSTM(nn.Module):
         
         for i in steps:
             hx, cx = hidden
-            # print(hx.shape) #1 hidden_size, hidden_size
-            # print(input[i].shape) # hidden_size, d
             hyp_hidden = self.hyp_recurrence(torch.cat((input[i],hx[0,:,:]),1), hyp_hidden)
             hyp_hx, hyp_cx = hyp_hidden
             
@@ -413,11 +310,8 @@ class HyperLSTM(nn.Module):
             else:
                 output.append(hidden)
 
-            # output.append(hidden[0] if isinstance(hidden, tuple) else hidden)
-            # output.append(isinstance(hidden, tuple) and hidden[0] or hidden)
 
         output = torch.cat(output, 0).view(input.size(0), *output[0].size())
-#         print(output.shape) # 48, 1, 8, 100
         output = output.view(self.args['T'],self.args['batch_size'],self.args['hidden_size']).transpose(0, 1)
 
         yhat = F.log_softmax(self.fc(output.contiguous().view(-1,self.args['hidden_size'])),dim=1)
@@ -427,7 +321,6 @@ class HyperLSTM(nn.Module):
 class nidLSTM(nn.Module):
 
     def __init__(self, args):
-        """Initialize params."""
         super(nidLSTM, self).__init__()
         self.args=args
         if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
@@ -446,7 +339,6 @@ class nidLSTM(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        # Added to mimic hypernetwork's LSTM implementation
         for i in range(self.args['num_segments']):
             self.input_weights[i].weight.data.uniform_()
             self.hidden_weights[i].weight.data = torch.from_numpy(\
@@ -454,10 +346,8 @@ class nidLSTM(nn.Module):
                 ).type(torch.FloatTensor)
 
     def forward(self, input):
-        """Propogate input through the network."""
         
         def recurrence(input, hidden, timestep):
-            """Recurrence helper."""
             hx, cx = hidden  # n_b x hidden_dim
             gates = self.input_weights[timestep](input) + self.hidden_weights[timestep](hx)
             gates = layer_norm_all(gates, self.args['batch_size'], 4, self.args['hidden_size'], gamma=self.lna_gamma, beta=self.lna_beta)
@@ -501,7 +391,6 @@ class nidLSTM(nn.Module):
 class nidLSTMout(nn.Module):
 
     def __init__(self, args):
-        """Initialize params."""
         super(nidLSTMout, self).__init__()
         self.args=args
         if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
@@ -522,19 +411,12 @@ class nidLSTMout(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        # # Added to mimic hypernetwork's LSTM implementation
         self.input_weights.weight.data.uniform_().cuda()
-        # self.hidden_weights.weight.data = (torch.transpose(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])),0,1)\
-        #                                                   [:3 * args['hidden_size'],:]).type(torch.FloatTensor)
         self.hidden_weights.weight.data = torch.from_numpy(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
                                                           [:3 * args['hidden_size'],:]).type(torch.FloatTensor)
         
-        # # Added to mimic hypernetwork's LSTM implementation
         for i in range(self.args['num_segments']):
             self.input_weights_out[i].weight.data.uniform_().cuda()
-            # self.hidden_weights_out[i].weight.data = (torch.transpose(\
-            #     lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])),0,1)\
-            #     [:args['hidden_size'],:]).type(torch.FloatTensor)
             self.hidden_weights_out[i].weight.data = torch.from_numpy(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
                 [:args['hidden_size'],:]).type(torch.FloatTensor)
 
@@ -573,7 +455,6 @@ class nidLSTMout(nn.Module):
                 output.append(hidden)
     
         output = torch.cat(output, 0).view(input.size(0), *output[0].size())
-#         print(output.shape) # 48, 1, 8, 100
         output = output.view(self.args['T'],self.args['batch_size'],self.args['hidden_size']).transpose(0, 1)
 
         yhat = F.relu(self.fc(output.contiguous().view(-1,self.args['hidden_size'])))
@@ -598,16 +479,12 @@ class LSTMT(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        # Added to mimic hypernetwork's LSTM implementation
         self.input_weights.weight.data.uniform_().cuda()
         self.hidden_weights.weight.data = nn.init.orthogonal_(torch.empty(self.hidden_weights.weight.data.shape)).cuda()
 
     def forward(self, input):
-        """Propogate input through the network."""
         def recurrence(input, hidden, t):
-            """Recurrence helper."""
             hx, cx = hidden  # n_b x hidden_dim
-            #joh: input originally comes in as batch_size x d
             t_array = torch.ones(input.shape[0],1)*(t/self.args['T'])
             input = torch.cat([input,Variable(t_array.cuda())], dim=1)
         
@@ -647,7 +524,6 @@ class LSTMT(nn.Module):
 class LSTMTE(nn.Module):
 
     def __init__(self, args):
-        """Initialize params."""
         super(LSTMTE, self).__init__()
         self.args=args
         self.h0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda()) 
@@ -662,7 +538,6 @@ class LSTMTE(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        # Added to mimic hypernetwork's LSTM implementation
         self.input_weights.weight.data.uniform_().cuda()
         self.hidden_weights.weight.data = nn.init.orthogonal_(torch.empty(self.hidden_weights.weight.data.shape)).cuda()
         
@@ -674,11 +549,8 @@ class LSTMTE(nn.Module):
         self.te[:, 1::2] = torch.cos(time * div_term)
         
     def forward(self, input):
-        """Propogate input through the network."""
         def recurrence(input, hidden, t):
-            """Recurrence helper."""
             hx, cx = hidden  # n_b x hidden_dim
-            #joh: input originally comes in as batch_size x d
             t_array = self.te[t,:].repeat(input.shape[0],1)
             input = torch.cat([input,Variable(t_array.cuda())], dim=1)
     

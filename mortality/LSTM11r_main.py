@@ -33,11 +33,7 @@ parser.add_argument('--delta',type=float,default=.05)
 
 parser.add_argument('--hidden_size',type=int,default=20)
 parser.add_argument('--hyp_hidden_size',type=int,default=20)
-parser.add_argument('--ratio',type=float,default=.5)
-parser.add_argument('--sigma',type=float,default=1)
 parser.add_argument('--batch_size',type=int,default=8)
-parser.add_argument('--kvdims',type=int,default=10)
-parser.add_argument('--num_filters',type=int,default=10)
 parser.add_argument('--nidLSTM',type=int,default=0)
 parser.add_argument('--realstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=24) #must be even

@@ -35,14 +35,10 @@ parser.add_argument('--synthnum_batch',nargs='+',type=int,default=[0,5])
 parser.add_argument('--batch_size',type=int,default=100)
 parser.add_argument('--hidden_size',type=int,default=20)
 parser.add_argument('--hyp_hidden_size',type=int,default=20)
-parser.add_argument('--ratio',type=float,default=.5)
-parser.add_argument('--sigma',type=float,default=1)
 parser.add_argument('--verbose',type=bool,default=False)
 parser.add_argument('--synthstart',type=bool,default=False)
 parser.add_argument('--te_size',type=int,default=16) #must be even
 parser.add_argument('--te_base',type=float,default=10000.0)
-parser.add_argument('--kvdims',type=int,default=10)
-parser.add_argument('--num_filters',type=int,default=10)
 
 #args=parser.parse_args(['--modelname','STN13t','--cuda','4','--KLmatchlen','2','3'])
 args=parser.parse_args()
@@ -61,7 +57,6 @@ if args['synthstart']:
     datagen.synth_evaluate(args)
 
 '''Test Models on the Synthetic Datasets'''
-
 if args['mode']=='case1':
     if args['synthstart']:
         datagen.synth_evaluate2(args)
