@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import pickle
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,9 +13,6 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
 import time
 import os
-
-savename_ = 'save/' 
-jeeheh_save = os.environ['jeeheh_save']
 
 def train(train_loader, model, args, optimizer, verbose=False):
     model.train()
@@ -70,7 +66,7 @@ def test(test_loader, model, args, save_scores=False):
         
     if save_scores: 
         args['len dataset'] = len(test_loader.dataset)
-        filename = savename_+args['modelname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
+        filename = args['savedir']+args['modelname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
         np.savez(filename + '_testscores', pred=pred, y_true=y_true,args=args)
         torch.save(model.state_dict(),  filename + ".ckpt")
     
@@ -148,7 +144,7 @@ def synth_data_search(args, synth_data, model_list):
         
     for synth_num in np.arange(args['synthnum_batch'][0],args['synthnum_batch'][1]):
         
-        simulation = np.load(jeeheh_save+args['genmodelname']+'_model'+str(synth_num)+'.npz')
+        simulation = np.load(args['savedir']+args['genmodelname']+'_model'+str(synth_num)+'.npz')
         args['delta'] = simulation['delta']
         args['k'] = simulation['k']
         
@@ -186,9 +182,9 @@ def synth_data_search(args, synth_data, model_list):
             zdf['delta'] = [args['delta']]*zdf.shape[0]
             zdf['synthnum'] = [synth_num]*zdf.shape[0]
             df = df.append(zdf, sort=True)
-            df.to_pickle(savename_+args['modelname']+'_data_search.pickle')
+            df.to_pickle(args'savedir']+args['modelname']+'_data_search.pickle')
         
-        df.to_pickle(savename_+args['modelname']+'_data_search.pickle')
+        df.to_pickle(args['savedir']+args['modelname']+'_data_search.pickle')
     return df
 
 

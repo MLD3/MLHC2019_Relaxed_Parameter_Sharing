@@ -14,9 +14,6 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn import metrics
 import os
 
-savename_ = 'save/'
-jeeheh_save = os.environ['jeeheh_save']
-
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -78,8 +75,8 @@ def real_test(test_loader, model, args, save_scores=False):
     auc_last5=roc_auc_score(y_true_last5,predicted_last5)
     
     if save_scores:
-        np.savez(savename_+args['modelname']+'_testscores', pred=predicted_max,y_true=y_true_last,args=args)
-        torch.save(model.state_dict(),  savename_+args['modelname'] + ".ckpt")        
+        np.savez(os.path.join(args['savedir'],args['modelname']+'_testscores'), pred=predicted_max,y_true=y_true_last,args=args)
+        torch.save(model.state_dict(),  os.path.join(args['savedir'],args['modelname'] + ".ckpt"))       
         
     return auc,test_loss,auc_last,auc_max,auc_last5
 
@@ -103,14 +100,9 @@ def real_data_search3(args, real_data, modelname, Net):
     if args['realstart']:
         train_data = real_data('train',args)
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
-        np.save(savename_+args['modelname']+'sample_ind', train_data.sample_ind)
+        np.save(os.path.join(args['savedir'],args['modelname']+'sample_ind'), train_data.sample_ind)
     else:
-        jeeheh_place = jeeheh_save+args['genmodelname']+'sample_ind.npy'
-        new_place = savename_+args['genmodelname']+'sample_ind.npy'        
-        if os.path.exists(jeeheh_place):
-            train_data = real_data('train',args,sample_ind=np.load(jeeheh_place))
-        else:
-            train_data = real_data('train',args,sample_ind=np.load(new_place)) 
+        train_data = real_data('train',args,sample_ind=np.load(os.path.join(args['savedir'],args['genmodelname']+'sample_ind.npy'))) 
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],
                                        shuffle=True)
         
@@ -159,7 +151,7 @@ def real_data_search3(args, real_data, modelname, Net):
                                    'hidden_size':[args['hidden_size']],'run':[run],\
                                   'hyp_hidden_size':[args['hyp_hidden_size']],'num_params':[count_parameters(model)]}),sort=False)
         df.reset_index(inplace=True,drop=True)
-        df.to_hdf(savename_+args['modelname']+'_data_search.h5',key='data',mode='w')
+        df.to_hdf(os.path.join(args['savedir'],args['modelname']+'_data_search.h5'),key='data',mode='w')
     
     df['N'] = args['N']
     df['model'] = [modelname]*df.shape[0]
@@ -167,7 +159,7 @@ def real_data_search3(args, real_data, modelname, Net):
     df['batch_size']=args['batch_size']
     df['budget']=args['budget']
     df['epochs']=args['epochs']
-    df.to_hdf(savename_+args['modelname']+'_data_search.h5',key='data',mode='w')
+    df.to_hdf(os.path.join(args['savedir'],args['modelname']+'_data_search.h5'),key='data',mode='w')
     return df
 
 def empBSCI_old(stat_bs,stat,ci):

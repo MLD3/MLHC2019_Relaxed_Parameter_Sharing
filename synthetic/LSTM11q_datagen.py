@@ -9,11 +9,6 @@ import torchvision
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 import torch.utils.data as data
-from sklearn.metrics import roc_auc_score, average_precision_score
-from sklearn import metrics
-import itertools
-import random
-from scipy.stats import entropy
 import os
 
 
