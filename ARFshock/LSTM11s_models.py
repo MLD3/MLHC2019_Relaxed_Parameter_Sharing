@@ -323,15 +323,16 @@ class nidLSTM(nn.Module):
     def __init__(self, args):
         super(nidLSTM, self).__init__()
         self.args=args
-        if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
-        self.args['num_segments']=np.ceil(args['T']/args['nidLSTM']).astype('int')
+        # if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
+        # self.args['num_segments']=np.ceil(args['T']/args['nidLSTM']).astype('int')
+        self.args['nidLSTM']=np.ceil(self.args['T']/self.args['shiftLSTMk']).astype('int')
             
         self.h0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda()) 
         self.c0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda())
         
-        self.fc = nn.ModuleList([nn.Linear(args['hidden_size'], args['num_classes']) for i in range(self.args['num_segments'])])
-        self.input_weights = nn.ModuleList([nn.Linear(args['d'], 4 * args['hidden_size']) for i in range(self.args['num_segments'])])
-        self.hidden_weights = nn.ModuleList([nn.Linear(args['hidden_size'], 4 * args['hidden_size']) for i in range(self.args['num_segments'])])
+        self.fc = nn.ModuleList([nn.Linear(args['hidden_size'], args['num_classes']) for i in range(self.args['shiftLSTMk'])])
+        self.input_weights = nn.ModuleList([nn.Linear(args['d'], 4 * args['hidden_size']) for i in range(self.args['shiftLSTMk'])])
+        self.hidden_weights = nn.ModuleList([nn.Linear(args['hidden_size'], 4 * args['hidden_size']) for i in range(self.args['shiftLSTMk'])])
         
         gamma_start = 1.0
         self.lna_gamma = Variable((torch.ones(4*args['hidden_size'])*gamma_start).cuda())
@@ -339,7 +340,7 @@ class nidLSTM(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        for i in range(self.args['num_segments']):
+        for i in range(self.args['shiftLSTMk']):
             self.input_weights[i].weight.data.uniform_()
             self.hidden_weights[i].weight.data = torch.from_numpy(\
                 lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\

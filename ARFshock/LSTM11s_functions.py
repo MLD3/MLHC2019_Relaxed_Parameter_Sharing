@@ -15,8 +15,6 @@ from sklearn import metrics
 def real_train(train_loader, model, args, optimizer):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        # if args['use_cuda']:
-        #     data, target = data.cuda(), target.cuda()
 
         data, target = Variable(data), Variable(target)
         if len(target)<args['batch_size']:
@@ -26,19 +24,16 @@ def real_train(train_loader, model, args, optimizer):
         
         loss = F.nll_loss(output.contiguous().view(-1,args['num_classes']), target.flatten())
         loss.backward()
-        if args['mode'] in ['Shock_moo', 'Shock_mow',
-                            'Shock_changegate_moo', 'Shock_changegate_mow',
-                            'ARF_moo', 'ARF_mow',
-                            'ARF_changegate_moo', 'ARF_changegate_mow']:
+        if args['model'] in ['moo', 'mow',
+                            'changegate_moo', 'changegate_mow',
+                            'moo', 'mow', 'changegate_moo', 'changegate_mow']:
             model.after_backward()
-        
         optimizer.step()
     return loss.item()
             
 def real_test(test_loader, model, args, save_scores=False):  
     model.eval()
     test_loss = 0
-    # correct = 0
     predicted=[]
     y_true=[]
     predicted_last=[]
@@ -48,8 +43,6 @@ def real_test(test_loader, model, args, save_scores=False):
     y_true_last5=[]
     
     for data, target in test_loader:
-        # if args['use_cuda']:
-        #     data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
         if len(target)<args['batch_size']:
             continue
@@ -77,13 +70,13 @@ def real_test(test_loader, model, args, save_scores=False):
     auc_last5=roc_auc_score(y_true_last5,predicted_last5)
     
     if save_scores: 
-        np.savez(args['savedir']+args['modelname']+'_testscores', pred=predicted_max, y_true=y_true_last,args=args)
-        torch.save(model.state_dict(),  args['savedir']+args['modelname'] + ".ckpt")
+        np.savez(args['savedir']+args['runname']+'_testscores', pred=predicted_max, y_true=y_true_last,args=args)
+        torch.save(model.state_dict(),  args['savedir']+args['runname'] + ".ckpt")
     return auc,test_loss,auc_last,auc_max,auc_last5
 
 
 
-def real_data_search3(args, real_data, modelname, Net):
+def real_data_search3(args, real_data, Net):
     
     # Import Validation & Test Set
     val_data = real_data('val',args)
@@ -92,21 +85,19 @@ def real_data_search3(args, real_data, modelname, Net):
     test_loader = data.DataLoader(test_data, batch_size=args['batch_size'],shuffle=True)
 
     # Setup
-    args['current_modeltype']=modelname
-    if 'nidLSTM' in modelname: args['nidLSTM']=float(modelname.split()[1])
-    print('{}'.format(modelname)) 
-    df=pd.DataFrame({'hidden_size':[]})                  
-    if modelname=='idLSTM': args['hidden_size_list'] = [25, 50, 75, 100, 125, 150] #[100,150,300,500]
-    else: args['hidden_size_list'] = [25, 50, 75, 100, 125, 150] #[100,150,300,500,700]
+    if 'shiftLSTM' in args['model']: args['shiftLSTMk']=float(args['model'].split()[1])
+    print('{}'.format(args['model'])) 
+    df=pd.DataFrame({'hidden_size':[]})               
+    args['hidden_size_list'] = [25, 50, 75, 100, 125, 150] 
     val_auc_max_all=0 
      
     # Training Data
     if args['realstart']:
         train_data = real_data('train',args)
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
-        np.save(args['savedir']+args['modelname']+'sample_ind', train_data.sample_ind)
+        np.save(args['savedir']+args['runname']+'sample_ind', train_data.sample_ind)
     else: 
-        train_data = real_data('train',args,sample_ind=np.load(args['savedir']+args['genmodelname']+'sample_ind.npy'))
+        train_data = real_data('train',args,sample_ind=np.load(args['savedir']+args['genrunname']+'sample_ind.npy'))
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
         
     # Runs
@@ -154,13 +145,13 @@ def real_data_search3(args, real_data, modelname, Net):
                                    'test_auc_last':[ztest_auc_last],'test_auc_max':[ztest_auc_max],'test_auc_last5':[ztest_auc_last5],\
                                    'hidden_size':[args['hidden_size']],'run':[run],'hyp_hidden_size':[args['hyp_hidden_size']]}),sort=False)
         df.reset_index(inplace=True,drop=True)
-        df.to_hdf(args['savedir']+args['modelname']+'_data_search.h5',key='data',mode='w')
+        df.to_hdf(args['savedir']+args['runname']+'_data_search.h5',key='data',mode='w')
     
     df['N'] = args['N']
-    df['model'] = [modelname]*df.shape[0]
-    df['genmodel'] = args['genmodelname']
+    df['model'] = [args['model']]*df.shape[0]
+    df['genrunname'] = args['genrunname']
     df['batch_size']=args['batch_size']
     df['budget']=args['budget']
     df['epochs']=args['epochs']
-    df.to_hdf(args['savedir']+args['modelname']+'_data_search.h5',key='data',mode='w')
+    df.to_hdf(args['savedir']+args['runname']+'_data_search.h5',key='data',mode='w')
     return df

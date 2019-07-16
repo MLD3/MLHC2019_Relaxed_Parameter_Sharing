@@ -28,8 +28,6 @@ parser.add_argument('--N',type=int,default=0)
 parser.add_argument('--share_num',type=int,default=2,help="share number for moo and mow")
 parser.add_argument('--synth_num',type=int,default=10) ## if change - gotta also change synthnum_batch
 parser.add_argument('--synthnum_batch',nargs='+',type=int,default=[0,10]) 
-parser.add_argument('--k',type=int,default=5)
-parser.add_argument('--delta',type=float,default=.05)
 
 parser.add_argument('--hidden_size',type=int,default=20)
 parser.add_argument('--hyp_hidden_size',type=int,default=20)
