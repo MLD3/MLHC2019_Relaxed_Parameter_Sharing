@@ -30,9 +30,7 @@ def real_train(train_loader, model, args, optimizer):
         
         loss = F.nll_loss(output.contiguous().view(-1,args['num_classes']), target.flatten())
         loss.backward()
-        if args['mode'] in ['real_moo', 'real_mow',
-                            'real_changegate_mow',
-                            'real_changegate_moo']:
+        if args['model'] in ['moo', 'mow','changegate_mow','changegate_moo']:
             model.after_backward()
         optimizer.step()
     return loss.item()
@@ -75,13 +73,13 @@ def real_test(test_loader, model, args, save_scores=False):
     auc_last5=roc_auc_score(y_true_last5,predicted_last5)
     
     if save_scores:
-        np.savez(os.path.join(args['savedir'],args['modelname']+'_testscores'), pred=predicted_max,y_true=y_true_last,args=args)
-        torch.save(model.state_dict(),  os.path.join(args['savedir'],args['modelname'] + ".ckpt"))       
+        np.savez(os.path.join(args['savedir'],args['runname']+'_testscores'), pred=predicted_max,y_true=y_true_last,args=args)
+        torch.save(model.state_dict(),  os.path.join(args['savedir'],args['runname'] + ".ckpt"))       
         
     return auc,test_loss,auc_last,auc_max,auc_last5
 
 
-def real_data_search3(args, real_data, modelname, Net):
+def real_data_search3(args, real_data, Net):
     
     # Import Validation & Test Set
     val_data = real_data('val',args)
@@ -90,9 +88,8 @@ def real_data_search3(args, real_data, modelname, Net):
     test_loader = data.DataLoader(test_data, batch_size=args['batch_size'],shuffle=True)
 
     # Setup
-    args['current_modeltype']=modelname
-    if 'nidLSTM' in modelname: args['nidLSTM']=float(modelname.split()[1])
-    print('{}'.format(modelname)) 
+    if 'shiftLSTM' in args['model']: args['shiftLSTMk']=int(modelname.split()[1])
+    print('{}'.format(args['model'])) 
     df=pd.DataFrame({'hidden_size':[]})                  
     val_auc_max_all=0
      
@@ -100,9 +97,9 @@ def real_data_search3(args, real_data, modelname, Net):
     if args['realstart']:
         train_data = real_data('train',args)
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],shuffle=True)
-        np.save(os.path.join(args['savedir'],args['modelname']+'sample_ind'), train_data.sample_ind)
+        np.save(os.path.join(args['savedir'],args['runname']+'sample_ind'), train_data.sample_ind)
     else:
-        train_data = real_data('train',args,sample_ind=np.load(os.path.join(args['savedir'],args['genmodelname']+'sample_ind.npy'))) 
+        train_data = real_data('train',args,sample_ind=np.load(os.path.join(args['savedir'],args['genrunname']+'sample_ind.npy'))) 
         train_loader = data.DataLoader(train_data, batch_size=args['batch_size'],
                                        shuffle=True)
         
@@ -151,15 +148,15 @@ def real_data_search3(args, real_data, modelname, Net):
                                    'hidden_size':[args['hidden_size']],'run':[run],\
                                   'hyp_hidden_size':[args['hyp_hidden_size']],'num_params':[count_parameters(model)]}),sort=False)
         df.reset_index(inplace=True,drop=True)
-        df.to_hdf(os.path.join(args['savedir'],args['modelname']+'_data_search.h5'),key='data',mode='w')
+        df.to_hdf(os.path.join(args['savedir'],args['runname']+'_data_search.h5'),key='data',mode='w')
     
     df['N'] = args['N']
-    df['model'] = [modelname]*df.shape[0]
-    df['genmodel'] = args['genmodelname']
+    df['model'] = [args['model']]*df.shape[0]
+    df['genrunname'] = args['genrunname']
     df['batch_size']=args['batch_size']
     df['budget']=args['budget']
     df['epochs']=args['epochs']
-    df.to_hdf(os.path.join(args['savedir'],args['modelname']+'_data_search.h5'),key='data',mode='w')
+    df.to_hdf(os.path.join(args['savedir'],args['runname']+'_data_search.h5'),key='data',mode='w')
     return df
 
 def empBSCI_old(stat_bs,stat,ci):

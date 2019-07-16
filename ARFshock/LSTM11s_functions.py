@@ -85,7 +85,7 @@ def real_data_search3(args, real_data, Net):
     test_loader = data.DataLoader(test_data, batch_size=args['batch_size'],shuffle=True)
 
     # Setup
-    if 'shiftLSTM' in args['model']: args['shiftLSTMk']=float(args['model'].split()[1])
+    if 'shiftLSTM' in args['model']: args['shiftLSTMk']=int(args['model'].split()[1])
     print('{}'.format(args['model'])) 
     df=pd.DataFrame({'hidden_size':[]})               
     args['hidden_size_list'] = [25, 50, 75, 100, 125, 150] 

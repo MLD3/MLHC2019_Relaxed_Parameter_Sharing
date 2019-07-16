@@ -323,15 +323,17 @@ class nidLSTM(nn.Module):
     def __init__(self, args):
         super(nidLSTM, self).__init__()
         self.args=args
-        if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
-        self.args['num_segments']=np.ceil(args['T']/args['nidLSTM']).astype('int')
+#         if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
+#         self.args['num_segments']=np.ceil(args['T']/args['nidLSTM']).astype('int')
+        self.args['nidLSTM']=np.ceil(self.args['T']/self.args['shiftLSTMk']).astype('int')
+
             
         self.h0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda()) 
         self.c0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda())
         
-        self.fc = nn.ModuleList([nn.Linear(args['hidden_size'], args['num_classes']) for i in range(self.args['num_segments'])])
-        self.input_weights = nn.ModuleList([nn.Linear(args['d'], 4 * args['hidden_size']) for i in range(self.args['num_segments'])])
-        self.hidden_weights = nn.ModuleList([nn.Linear(args['hidden_size'], 4 * args['hidden_size']) for i in range(self.args['num_segments'])])
+        self.fc = nn.ModuleList([nn.Linear(args['hidden_size'], args['num_classes']) for i in range(self.args['shiftLSTMk'])])
+        self.input_weights = nn.ModuleList([nn.Linear(args['d'], 4 * args['hidden_size']) for i in range(self.args['shiftLSTMk'])])
+        self.hidden_weights = nn.ModuleList([nn.Linear(args['hidden_size'], 4 * args['hidden_size']) for i in range(self.args['shiftLSTMk'])])
         
         gamma_start = 1.0
         self.lna_gamma = Variable((torch.ones(4*args['hidden_size'])*gamma_start).cuda())
@@ -339,7 +341,7 @@ class nidLSTM(nn.Module):
         self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
         self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
         
-        for i in range(self.args['num_segments']):
+        for i in range(self.args['shiftLSTMk']):
             self.input_weights[i].weight.data.uniform_()
             self.hidden_weights[i].weight.data = torch.from_numpy(\
                 lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
@@ -387,79 +389,6 @@ class nidLSTM(nn.Module):
         yhat = yhat.view(self.args['T'], self.args['batch_size'],self.args['num_classes']).transpose(0,1)
         return yhat 
     
-# nidLSTM + Time varying output parameters only
-class nidLSTMout(nn.Module):
-
-    def __init__(self, args):
-        super(nidLSTMout, self).__init__()
-        self.args=args
-        if args['nidLSTM']==0: raise ValueError("Segmentation length of nidLSTM set to 0")
-        self.args['num_segments']=np.ceil(args['T']/args['nidLSTM']).astype('int')
-        
-        self.h0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda()) 
-        self.c0 = Variable(torch.zeros(1, args['batch_size'], args['hidden_size']).cuda())
-        
-        self.fc = nn.Linear(args['hidden_size'], args['num_classes'])
-        self.input_weights_out = nn.ModuleList([nn.Linear(args['d'], args['hidden_size']) for i in range(self.args['num_segments'])])
-        self.hidden_weights_out = nn.ModuleList([nn.Linear(args['hidden_size'], args['hidden_size']) for i in range(self.args['num_segments'])])
-        self.input_weights = nn.Linear(args['d'], 3 * args['hidden_size']) 
-        self.hidden_weights = nn.Linear(args['hidden_size'], 3 * args['hidden_size']) 
-        
-        gamma_start = 1.0
-        self.lna_gamma = Variable((torch.ones(4*args['hidden_size'])*gamma_start).cuda())
-        self.lna_beta = Variable((torch.zeros(4*args['hidden_size'])).cuda())
-        self.ln_gamma = Variable((torch.ones(args['hidden_size'])*gamma_start).cuda())
-        self.ln_beta = Variable((torch.zeros(args['hidden_size'])).cuda())
-        
-        self.input_weights.weight.data.uniform_().cuda()
-        self.hidden_weights.weight.data = torch.from_numpy(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
-                                                          [:3 * args['hidden_size'],:]).type(torch.FloatTensor)
-        
-        for i in range(self.args['num_segments']):
-            self.input_weights_out[i].weight.data.uniform_().cuda()
-            self.hidden_weights_out[i].weight.data = torch.from_numpy(lstm_ortho_initializer((args['hidden_size'], 4 * args['hidden_size'])).transpose()\
-                [:args['hidden_size'],:]).type(torch.FloatTensor)
-
-    def forward(self, input):
-        """Propogate input through the network."""
-        
-        def recurrence(input, hidden, timestep):
-            """Recurrence helper."""
-            hx, cx = hidden  # n_b x hidden_dim
-            gates = self.input_weights(input) + self.hidden_weights(hx)
-            gates_out = self.input_weights_out[timestep](input) + self.hidden_weights_out[timestep](hx)
-            gates = torch.cat((gates,gates_out),2)
-            gates = layer_norm_all(gates, self.args['batch_size'], 4, self.args['hidden_size'], gamma=self.lna_gamma, beta=self.lna_beta)
-            ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
-
-            ingate = torch.sigmoid(ingate)
-            forgetgate = torch.sigmoid(forgetgate)
-            cellgate = torch.tanh(cellgate)  # o_t
-            outgate = torch.sigmoid(outgate)
-
-            cy = (forgetgate * cx) + (ingate * cellgate)
-            hy = outgate * torch.tanh(layer_norm(cy, self.args['hidden_size'], gamma=self.ln_gamma, beta=self.ln_beta))            
-            return hy, cy
-
-        input = input.transpose(0, 1)
-
-        output = []
-        steps = range(input.size(0))
-        hidden = (self.h0,self.c0)
-        for i in steps:
-            timestep = np.trunc(i/self.args['nidLSTM']).astype('int')
-            hidden = recurrence(input[i], hidden, timestep)
-            if isinstance(hidden, tuple):
-                output.append(hidden[0])
-            else:
-                output.append(hidden)
-    
-        output = torch.cat(output, 0).view(input.size(0), *output[0].size())
-        output = output.view(self.args['T'],self.args['batch_size'],self.args['hidden_size']).transpose(0, 1)
-
-        yhat = F.relu(self.fc(output.contiguous().view(-1,self.args['hidden_size'])))
-        return yhat.view(self.args['batch_size'],self.args['T'],-1)
-
     
 class LSTMT(nn.Module):
 
@@ -520,7 +449,7 @@ class LSTMT(nn.Module):
         yhat = F.log_softmax(self.fc(output.contiguous().view(-1,self.args['hidden_size'])),dim=1)
         return yhat.view(self.args['batch_size'],self.args['T'],-1)
     
- 
+
 class LSTMTE(nn.Module):
 
     def __init__(self, args):
