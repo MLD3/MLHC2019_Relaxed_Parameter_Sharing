@@ -23,7 +23,6 @@ python savedata.py --datadir /data/mimic/ --savedir /data/mlhc2019_RWS/
 * Running the code
 
 TODO: Jeeheh, could you describe the command for running the code here? there are options such as real_data I'm not familiar with
-TODO: Also, please remove any absolute path in the file and any comment with joh or jeeheh in it
 
 ** synthetic dataset 
 
@@ -35,9 +34,13 @@ python LSTM11q_main.py --modelname your_model_will_be_saved_as --mode add_to_the
 
 #+TODO
 
-** ARF
+** ARF and Shock
 
-#+TODO
+The following exmple code will train a model using the default settings described in LSTM11s_main.py. Each run requires that a runname, mode and model be specified. Runname determines the name used when saving output. Mode can be either "ARF" or "Shock" and determines the data/task. Model determines what kind of model wil be trained. In the example a shiftLSTM-2 will be learned. Additional settings such as which GPU device to use can be changed using options such as cuda in the example code below. Data and save directories should also be modified either via options or set as defaults in LSTM11s_main.py See LSTM11s_main.py for more details.
+
+#+BEGIN_SRC bash
+python LSTM11s_main.py --runname your_model_will_be_saved_as --mode ARF --model "shiftLSTM 2" --realstart True --cuda 1
+#+END_SRC
 
 ** Shock
 
