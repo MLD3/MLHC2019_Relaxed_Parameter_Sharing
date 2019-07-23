@@ -80,7 +80,7 @@ def synth_evaluate2(args):
     
     for run in range(args['synth_num']):
         eval_data = synth_data2(args)
-        np.savez(os.path.join(args['savedir'],args['modelname']+'_model'+str(run)), k=args['k'], delta=args['delta'],\
+        np.savez(os.path.join(args['savedir'],args['runname']+'_model'+str(run)), k=args['k'], delta=args['delta'],\
                  k_dist=eval_data.k_dist, d_dist=eval_data.d_dist)
     print('synth_num: {}'.format(args['synth_num']))
     return

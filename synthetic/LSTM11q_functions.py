@@ -66,7 +66,7 @@ def test(test_loader, model, args, save_scores=False):
         
     if save_scores: 
         args['len dataset'] = len(test_loader.dataset)
-        filename = args['savedir']+args['modelname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
+        filename = args['savedir']+args['runname']+'_'+str(args['synth_num'])+'_'+args['current_modeltype']
         np.savez(filename + '_testscores', pred=pred, y_true=y_true,args=args)
         torch.save(model.state_dict(),  filename + ".ckpt")
     
@@ -144,7 +144,7 @@ def synth_data_search(args, synth_data, model_list):
         
     for synth_num in np.arange(args['synthnum_batch'][0],args['synthnum_batch'][1]):
         
-        simulation = np.load(args['savedir']+args['genmodelname']+'_model'+str(synth_num)+'.npz')
+        simulation = np.load(args['savedir']+args['genrunname']+'_model'+str(synth_num)+'.npz')
         args['delta'] = simulation['delta']
         args['k'] = simulation['k']
         
@@ -161,7 +161,7 @@ def synth_data_search(args, synth_data, model_list):
         print('True Random Baseline {}'.format(zdf.test_loss[0]))
         zdf['model'] = ['truerandom']
         zdf['synthnum'] = [synth_num]
-        zdf['genmodelname'] = [args['genmodelname']]
+        zdf['genrunname'] = [args['genrunname']]
         zdf['delta'] = [args['delta']]
         zdf['N'] = [args['N']]
         df = df.append(zdf,sort=True)
@@ -176,15 +176,15 @@ def synth_data_search(args, synth_data, model_list):
             zdf = HP_search(args, model, train_loader, val_loader, test_loader)
             
             zdf['model'] = [modelname]*zdf.shape[0]
-            zdf['genmodelname'] = [args['genmodelname']]*zdf.shape[0]
-            zdf['modelname'] = [args['modelname']]*zdf.shape[0]
+            zdf['genrunname'] = [args['genrunname']]*zdf.shape[0]
+            zdf['runname'] = [args['runname']]*zdf.shape[0]
             zdf['N'] = [args['N']]*zdf.shape[0]
             zdf['delta'] = [args['delta']]*zdf.shape[0]
             zdf['synthnum'] = [synth_num]*zdf.shape[0]
             df = df.append(zdf, sort=True)
-            df.to_pickle(args'savedir']+args['modelname']+'_data_search.pickle')
+            df.to_pickle(args'savedir']+args['runname']+'_data_search.pickle')
         
-        df.to_pickle(args['savedir']+args['modelname']+'_data_search.pickle')
+        df.to_pickle(args['savedir']+args['runname']+'_data_search.pickle')
     return df
 
 
