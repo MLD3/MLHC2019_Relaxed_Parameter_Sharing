@@ -29,7 +29,7 @@ parser.add_argument('--share_num',type=int,default=2,help="share number for moo 
 
 parser.add_argument('--batch_size',type=int,default=8)
 parser.add_argument('--shiftLSTMk',type=int,default=0,help='number of LSTM cells learned')
-parser.add_argument('--realstart',type=bool,default=False,help='if set to True, redraws the subsample instead of loading existing subsample from run genrunname')
+parser.add_argument('--realstart',type=bool,default=False,help='if set to True, redraws the subsample instead of loading existing subsample from run genrunname. set to True on fist run regardless of if you will subsample or not.')
 parser.add_argument('--te_size',type=int,default=24,help='hyperparameter for temporal embedding for LSTM+TE. must be even number.') 
 parser.add_argument('--te_base',type=float,default=10000.0,help='hyperparameter for temporal embedding for LSTM+TE')
 
