@@ -17,18 +17,16 @@ import os
 def train(train_loader, model, args, optimizer, verbose=False):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        # if args['use_cuda']:
-        #     data, target = data.cuda(), target.cuda()
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = model(data) #includes all time steps
         
-        output = output[:,args['k']:,:].contiguous()
-        target = target[:,args['k']:,:].contiguous()
+        output = output[:,args['l']:,:].contiguous()
+        target = target[:,args['l']:,:].contiguous()
         
         loss = F.mse_loss(output.view(-1,args['output_size']), target.view(-1,args['output_size']))
         loss.backward()
-        if args['mode'] in ['moo', 'mow', 'changegate_mow', 'changegate_moo']:
+        if args['model'] in ['moo', 'mow', 'changegate_mow', 'changegate_moo']:
             model.after_backward()
         optimizer.step()
         if verbose & (batch_idx % 500 == 0):
@@ -42,7 +40,7 @@ def test(test_loader, model, args, save_scores=False):
     
     model.eval()
     test_loss = 0
-    test_loss_t = np.zeros(args['T']-args['k'])
+    test_loss_t = np.zeros(args['T']-args['l'])
     pred = []
     y_true = []
     
@@ -52,12 +50,12 @@ def test(test_loader, model, args, save_scores=False):
         data, target = Variable(data, volatile=True), Variable(target)
         output = model(data)
         
-        output = output[:,args['k']:,:].contiguous()
-        target = target[:,args['k']:,:].contiguous()
+        output = output[:,args['l']:,:].contiguous()
+        target = target[:,args['l']:,:].contiguous()
 
         # sum up batch loss
         test_loss += F.mse_loss(output.view(-1,args['output_size']), target.view(-1,args['output_size']), reduction='sum').item()
-        for t in range(args['T']-args['k']):
+        for t in range(args['T']-args['l']):
             test_loss_t[t] += F.mse_loss(output[:,t,:].contiguous().view(-1,args['output_size']), 
                                          target[:,t,:].contiguous().view(-1,args['output_size']), reduction='sum').item()   
         if save_scores:
@@ -70,7 +68,7 @@ def test(test_loader, model, args, save_scores=False):
         np.savez(filename + '_testscores', pred=pred, y_true=y_true,args=args)
         torch.save(model.state_dict(),  filename + ".ckpt")
     
-    test_loss /= len(test_loader.dataset)*(args['T']-args['k'])
+    test_loss /= len(test_loader.dataset)*(args['T']-args['l'])
     test_loss_t /= len(test_loader.dataset)
     return test_loss, test_loss_t
 
@@ -142,11 +140,11 @@ def convert_distb(a):
 def synth_data_search(args, synth_data, model_list):
     df=pd.DataFrame({'l2':[],'hidden_size':[],'epoch':[],'model':[]})
         
-    for synth_num in np.arange(args['synthnum_batch'][0],args['synthnum_batch'][1]):
+    for synth_num in np.arange(args['synth_num']):
         
         simulation = np.load(args['savedir']+args['genrunname']+'_model'+str(synth_num)+'.npz')
         args['delta'] = simulation['delta']
-        args['k'] = simulation['k']
+        args['l'] = simulation['k']
         
         train_data = synth_data(args, k_dist=simulation['k_dist'], d_dist=simulation['d_dist'])
         val_data = synth_data(args, k_dist=simulation['k_dist'], d_dist=simulation['d_dist'])
@@ -157,14 +155,6 @@ def synth_data_search(args, synth_data, model_list):
         val_loader = data.DataLoader(val_data, batch_size=args['batch_size'],shuffle=True, drop_last=True)
         test_loader = data.DataLoader(test_data, batch_size=args['batch_size'],shuffle=True, drop_last=True)
         
-        zdf = pd.DataFrame({'test_loss':[truerandom2(test_loader,args)]}) 
-        print('True Random Baseline {}'.format(zdf.test_loss[0]))
-        zdf['model'] = ['truerandom']
-        zdf['synthnum'] = [synth_num]
-        zdf['genrunname'] = [args['genrunname']]
-        zdf['delta'] = [args['delta']]
-        zdf['N'] = [args['N']]
-        df = df.append(zdf,sort=True)
         
         for modelname, model in model_list:
             args['synth_num'] = synth_num
@@ -182,7 +172,7 @@ def synth_data_search(args, synth_data, model_list):
             zdf['delta'] = [args['delta']]*zdf.shape[0]
             zdf['synthnum'] = [synth_num]*zdf.shape[0]
             df = df.append(zdf, sort=True)
-            df.to_pickle(args'savedir']+args['runname']+'_data_search.pickle')
+            df.to_pickle(args['savedir']+args['runname']+'_data_search.pickle')
         
         df.to_pickle(args['savedir']+args['runname']+'_data_search.pickle')
     return df
@@ -197,12 +187,12 @@ def do_bootstrap(pred, target, args):
     zpred = Variable(torch.from_numpy(pred).type(torch.FloatTensor).cuda())
     ztarget = Variable(torch.from_numpy(target).type(torch.FloatTensor).cuda())
     auroc = F.mse_loss(zpred.view(-1,args['output_size']), ztarget.view(-1,args['output_size']), reduction='sum').item()
-    auroc = auroc / (args['len dataset']*(args['T']-args['k']))
+    auroc = auroc / (args['len dataset']*(args['T']-args['l']))
     
     #Bootstrap 95% CI
     np.random.seed(124)
-    pred = np.reshape(pred, (args['len dataset'], args['T']-args['k']))
-    target = np.reshape(target, (args['len dataset'], args['T']-args['k']))
+    pred = np.reshape(pred, (args['len dataset'], args['T']-args['l']))
+    target = np.reshape(target, (args['len dataset'], args['T']-args['l']))
     bootstrap=np.random.choice(args['len dataset'],(nrep,args['len dataset']),replace=True)
 
     aurocbs=np.empty(nrep)
@@ -211,7 +201,7 @@ def do_bootstrap(pred, target, args):
         zpred = Variable(torch.from_numpy(pred[bootstrap[i,:],:]).type(torch.FloatTensor).cuda())
         ztarget = Variable(torch.from_numpy(target[bootstrap[i,:],:]).type(torch.FloatTensor).cuda())
         aurocbs[i] = F.mse_loss(zpred.view(-1,args['output_size']), ztarget.view(-1,args['output_size']), reduction='sum').item()
-        aurocbs[i] = aurocbs[i] / (args['len dataset']*(args['T']-args['k']))
+        aurocbs[i] = aurocbs[i] / (args['len dataset']*(args['T']-args['l']))
     zauroc=np.argsort(aurocbs) #sorts smallest to largest
         
     auroc_lower,auroc_upper=empBSCI(aurocbs,auroc,95)

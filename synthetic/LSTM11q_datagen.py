@@ -21,7 +21,7 @@ class synth_data2(data.Dataset):
         self.new_N=args['N']
         self.k_dist=k_dist
         self.d_dist=d_dist
-        if args['T']<=args['k']: print('Uhoh: T<=k')
+        if args['T']<=args['l']: print('Uhoh: T<=k')
         
         """Gen X"""
         x_size = args['N']*args['T']*args['d']
@@ -35,22 +35,22 @@ class synth_data2(data.Dataset):
             self.d_dist = []
             for i in range(args['T']):
                 # If i<k, we won't evaluate using that timestep therefore it doesn't matter
-                if i<args['k']: 
-                    self.k_dist.append(np.ones(args['k']))
+                if i<args['l']: 
+                    self.k_dist.append(np.ones(args['l']))
                     self.d_dist.append(np.ones(args['d']))
-                elif i==args['k']: 
-                    self.k_dist.append(self.convert_distb(np.random.uniform(size=(args['k']))))
+                elif i==args['l']: 
+                    self.k_dist.append(self.convert_distb(np.random.uniform(size=(args['l']))))
                     self.d_dist.append(self.convert_distb(np.random.uniform(size=(args['d']))))
                 else: 
-                    delta_t = np.random.uniform(-args['delta'],args['delta'],size=(args['k']))
+                    delta_t = np.random.uniform(-args['delta'],args['delta'],size=(args['l']))
                     delta_d = np.random.uniform(-args['delta'],args['delta'],size=(args['d']))
                     self.k_dist.append(self.convert_distb(self.k_dist[i-1]+delta_t))
                     self.d_dist.append(self.convert_distb(self.d_dist[i-1]+delta_d))
         
         self.y=np.ones((self.args['N'],self.args['T'],1))
         for i in range(args['T']):
-            if i>=args['k']:
-                self.y[:,i,0] = np.matmul(np.matmul(self.x[:,i-args['k']:i,:],self.d_dist[i]), self.k_dist[i])
+            if i>=args['l']:
+                self.y[:,i,0] = np.matmul(np.matmul(self.x[:,i-args['l']:i,:],self.d_dist[i]), self.k_dist[i])
 
         self.x = torch.from_numpy(self.x).type(torch.FloatTensor).cuda()
         self.y = torch.from_numpy(self.y).type(torch.FloatTensor).cuda()
@@ -80,7 +80,7 @@ def synth_evaluate2(args):
     
     for run in range(args['synth_num']):
         eval_data = synth_data2(args)
-        np.savez(os.path.join(args['savedir'],args['runname']+'_model'+str(run)), k=args['k'], delta=args['delta'],\
+        np.savez(os.path.join(args['savedir'],args['runname']+'_model'+str(run)), k=args['l'], delta=args['delta'],\
                  k_dist=eval_data.k_dist, d_dist=eval_data.d_dist)
     print('synth_num: {}'.format(args['synth_num']))
     return
